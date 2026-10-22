@@ -1,0 +1,978 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#edf1f3" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0b1217" media="(prefers-color-scheme: dark)">
+<meta name="robots" content="noindex, nofollow">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="מרכז שליטה">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}[hidden]{display:none!important}img{max-width:100%}</style>
+<title>גרינפלסטש מרכז שליטה</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700&family=IBM+Plex+Mono:wght@500;600&family=Secular+One&display=swap">
+<style>
+/* Layout: instrument-panel feed from the radar app – sticky header, one column of cards, fixed bottom tab bar, full-screen sheets for detail and forms */
+:root {
+  --bg: #edf1f3; --surface: #ffffff; --surface-2: #e2e8ec; --ink: #13202a; --ink-2: #44535f; --muted: #687884;
+  --line: #d4dce2; --accent: #0d6b83; --accent-ink: #ffffff; --accent-soft: #d5eaf0;
+  --good: #157847; --good-soft: #dcf0e5; --bad: #bb3829; --bad-soft: #f7dfdb; --warn: #9c5a00; --warn-soft: #f5e7d0;
+  --shadow: 0 1px 2px rgba(19,32,42,.06), 0 2px 8px rgba(19,32,42,.05); --scrim: rgba(11,18,23,.45);
+  --font-display: "Secular One", "Assistant", system-ui, sans-serif;
+  --font-body: "Assistant", system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+  --font-data: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --r: 14px; --nav-h: 64px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0b1217; --surface: #131d24; --surface-2: #1c2830; --ink: #e3ebf0; --ink-2: #b3c0ca; --muted: #8496a3;
+    --line: #24323c; --accent: #4bb7d3; --accent-ink: #05222b; --accent-soft: #11313b; --good: #44c486;
+    --good-soft: #10331f; --bad: #ff7a69; --bad-soft: #3a1914; --warn: #f1a94a; --warn-soft: #382811;
+    --shadow: none; --scrim: rgba(0,0,0,.6); color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0b1217; --surface: #131d24; --surface-2: #1c2830; --ink: #e3ebf0; --ink-2: #b3c0ca; --muted: #8496a3;
+  --line: #24323c; --accent: #4bb7d3; --accent-ink: #05222b; --accent-soft: #11313b; --good: #44c486;
+  --good-soft: #10331f; --bad: #ff7a69; --bad-soft: #3a1914; --warn: #f1a94a; --warn-soft: #382811;
+  --shadow: none; --scrim: rgba(0,0,0,.6); color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 var(--font-body); font-variant-numeric: tabular-nums; -webkit-tap-highlight-color: transparent; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 50; background: var(--bg); }
+button, input, select, textarea { font: inherit; color: inherit; }
+a { color: var(--accent); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+h1, h2, h3 { margin: 0; text-wrap: balance; font-weight: 700; }
+.num { direction: ltr; unicode-bidi: isolate; white-space: nowrap; }
+.mono { font-family: var(--font-data); direction: ltr; unicode-bidi: isolate; }
+.muted { color: var(--muted); } .small { font-size: 13px; }
+.wrap { max-width: 680px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+
+/* top bar */
+.topbar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; background: var(--bg); background: color-mix(in srgb, var(--bg) 88%, transparent); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); }
+.topbar .wrap { display: flex; align-items: center; gap: 10px; padding-block: 10px; }
+.brand { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; }
+.brand h1 { font: 21px/1.1 var(--font-display); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.brand .sub { font-size: 12px; color: var(--muted); display: block; font-weight: 600; letter-spacing: .04em; }
+.mark { width: 30px; height: 30px; flex: none; }
+.icon-btn { width: 40px; height: 40px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); display: grid; place-items: center; cursor: pointer; flex: none; }
+.icon-btn svg { width: 20px; height: 20px; }
+
+main { padding-block: 14px calc(var(--nav-h) + env(safe-area-inset-bottom, 0px) + 84px); }
+.stack { display: flex; flex-direction: column; gap: 12px; }
+.section-title { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-top: 10px; }
+.section-title h2 { font: 19px/1.25 var(--font-display); }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 14px; box-shadow: var(--shadow); min-width: 0; }
+.eyebrow { font-size: 12px; font-weight: 700; letter-spacing: .06em; color: var(--muted); }
+
+/* hero */
+.hero { display: flex; gap: 16px; align-items: center; }
+.hero .grow { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.big { font: 34px/1.05 var(--font-display); }
+.ring { position: relative; width: 84px; height: 84px; flex: none; }
+.ring svg { width: 84px; height: 84px; transform: rotate(-90deg); }
+.ring .val { position: absolute; inset: 0; display: grid; place-items: center; font: 22px/1 var(--font-display); }
+.ring .cap { position: absolute; inset-inline: 0; bottom: 17px; text-align: center; font-size: 10.5px; color: var(--muted); }
+
+/* strip & chips */
+.strip { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.stat { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; display: flex; flex-direction: column; gap: 2px; text-align: start; cursor: pointer; }
+.stat .v { font: 20px/1.2 var(--font-display); }
+.stat .l { font-size: 12.5px; color: var(--muted); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font-size: 13px; border-radius: 8px; padding: 3px 8px; background: var(--surface-2); color: var(--ink-2); white-space: nowrap; border: 0; }
+.chip b { color: inherit; }
+.chip.good { background: var(--good-soft); color: var(--good); } .chip.bad { background: var(--bad-soft); color: var(--bad); }
+.chip.warn { background: var(--warn-soft); color: var(--warn); } .chip.acc { background: var(--accent-soft); color: var(--accent); }
+.filters { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; }
+.filters::-webkit-scrollbar { display: none; }
+.filters button { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 5px 12px; font-size: 13.5px; white-space: nowrap; cursor: pointer; }
+.filters button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 700; }
+
+/* rows */
+.rows { display: flex; flex-direction: column; }
+.row { display: flex; align-items: center; gap: 10px; padding: 11px 2px; border: 0; border-top: 1px solid var(--line); background: none; width: 100%; text-align: start; cursor: pointer; }
+.row:first-child { border-top: 0; }
+.row .grow { flex: 1; min-width: 0; }
+.row .t { font-weight: 700; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row .s { display: block; font-size: 13px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row .end { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex: none; }
+.row .amt { font-weight: 700; }
+.stripe { width: 4px; align-self: stretch; border-radius: 4px; background: var(--line); flex: none; }
+.stripe.bad { background: var(--bad); } .stripe.warn { background: var(--warn); } .stripe.good { background: var(--good); } .stripe.acc { background: var(--accent); }
+.empty { text-align: center; padding: 22px 8px; color: var(--muted); display: flex; flex-direction: column; gap: 6px; align-items: center; }
+
+/* buttons */
+.btn { border: 1px solid var(--line); background: var(--surface); border-radius: 12px; padding: 10px 14px; cursor: pointer; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; gap: 6px; text-decoration: none; color: var(--ink); }
+.btn.pri { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn.good { background: var(--good-soft); border-color: transparent; color: var(--good); }
+.btn.bad { background: var(--bad-soft); border-color: transparent; color: var(--bad); }
+.btn.sm { padding: 6px 10px; font-size: 13.5px; border-radius: 10px; }
+.btn svg { width: 18px; height: 18px; }
+.btns { display: flex; flex-wrap: wrap; gap: 8px; }
+.btns.full > * { flex: 1 1 0; }
+.fab { position: fixed; z-index: 25; inset-inline-start: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(var(--nav-h) + env(safe-area-inset-bottom, 0px) + 14px); height: 52px; border-radius: 16px; padding: 0 18px; border: 0; background: var(--accent); color: var(--accent-ink); font-weight: 700; display: flex; align-items: center; gap: 8px; cursor: pointer; box-shadow: 0 6px 18px rgba(0,0,0,.18); }
+.fab svg { width: 20px; height: 20px; }
+
+/* banners */
+.banner { border-radius: 12px; padding: 10px 12px; font-size: 14px; display: flex; gap: 10px; align-items: flex-start; }
+.banner .dot { width: 9px; height: 9px; border-radius: 50%; margin-top: 7px; flex: none; background: var(--accent); }
+.banner.info { background: var(--accent-soft); } .banner.warn { background: var(--warn-soft); } .banner.bad { background: var(--bad-soft); }
+.banner.warn .dot { background: var(--warn); } .banner.bad .dot { background: var(--bad); }
+.banner .grow { flex: 1; min-width: 0; }
+
+/* bottom nav */
+.nav { position: fixed; inset-inline: 0; bottom: 0; z-index: 30; background: var(--surface); border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom, 0px); padding-left: env(safe-area-inset-left, 0px); padding-right: env(safe-area-inset-right, 0px); }
+.nav-in { max-width: 680px; margin: 0 auto; display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; height: var(--nav-h); }
+.nav button { border: 0; background: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; font-size: 12.5px; color: var(--muted); cursor: pointer; position: relative; }
+.nav button svg { width: 23px; height: 23px; }
+.nav button[aria-current="page"] { color: var(--accent); font-weight: 700; }
+.nav .badge { position: absolute; top: 8px; inset-inline-end: calc(50% - 22px); min-width: 17px; height: 17px; border-radius: 9px; background: var(--bad); color: var(--surface); font-size: 11px; font-weight: 700; display: grid; place-items: center; padding: 0 4px; }
+
+/* full-screen sheet */
+.sheet { position: fixed; inset: 0; z-index: 40; background: var(--bg); overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; padding-top: env(safe-area-inset-top, 0px); }
+.sheet-bar { position: sticky; top: 0; z-index: 2; background: var(--bg); background: color-mix(in srgb, var(--bg) 90%, transparent); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); }
+.sheet-bar .wrap { display: flex; align-items: center; gap: 12px; padding-block: 10px; }
+.sheet-bar h2 { font: 19px/1.2 var(--font-display); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sheet-body { padding-block: 16px calc(env(safe-area-inset-bottom, 0px) + 32px); display: flex; flex-direction: column; gap: 12px; }
+
+/* forms */
+.form { display: flex; flex-direction: column; gap: 12px; }
+.field { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.field label { font-size: 13px; font-weight: 700; color: var(--ink-2); }
+.field input, .field select, .field textarea { width: 100%; min-width: 0; border: 1px solid var(--line); background: var(--surface); border-radius: 10px; padding: 10px 12px; font-size: 16px; }
+.field textarea { min-height: 76px; resize: vertical; }
+.field .hint { font-size: 12.5px; color: var(--muted); }
+.grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.kv { display: flex; justify-content: space-between; gap: 10px; padding: 7px 0; border-top: 1px solid var(--line); }
+.kv:first-child { border-top: 0; }
+.kv span:first-child { color: var(--muted); }
+.kv b { text-align: end; }
+.total { font: 26px/1.1 var(--font-display); }
+.item { display: flex; gap: 8px; align-items: center; padding: 8px 0; border-top: 1px solid var(--line); }
+.item:first-child { border-top: 0; }
+.item .grow { flex: 1; min-width: 0; }
+.qty { display: flex; align-items: center; gap: 4px; flex: none; }
+.qty input { width: 64px; text-align: center; border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 6px 4px; font-size: 16px; }
+.x { width: 32px; height: 32px; border-radius: 9px; border: 0; background: var(--surface-2); cursor: pointer; display: grid; place-items: center; flex: none; color: var(--muted); }
+.x svg { width: 16px; height: 16px; }
+pre.out { white-space: pre-wrap; margin: 0; font: 14px/1.6 var(--font-body); background: var(--surface-2); border-radius: 10px; padding: 12px; max-height: 340px; overflow-y: auto; }
+textarea.out { width: 100%; min-height: 180px; border: 1px solid var(--line); border-radius: 10px; padding: 10px; background: var(--surface); font-size: 13px; }
+
+/* confirm dialog */
+.scrim { position: fixed; inset: 0; z-index: 70; background: var(--scrim); display: grid; place-items: end center; padding: 16px; padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px)); }
+.dialog { width: 100%; max-width: 480px; background: var(--surface); border-radius: 18px; padding: 18px; display: flex; flex-direction: column; gap: 12px; }
+.dialog h3 { font: 18px/1.3 var(--font-display); }
+.toast { position: fixed; inset-inline: 16px; bottom: calc(var(--nav-h) + env(safe-area-inset-bottom, 0px) + 12px); z-index: 80; margin: 0 auto; max-width: 480px; background: var(--ink); color: var(--bg); border-radius: 12px; padding: 11px 14px; font-weight: 600; text-align: center; }
+
+/* lock screen */
+.lock { min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px; padding-block: 32px; text-align: center; }
+.scope { position: relative; width: 220px; height: 128px; border-radius: 18px; border: 1.5px solid var(--accent); overflow: hidden; direction: ltr;
+  background: repeating-linear-gradient(90deg, transparent 0 21px, color-mix(in srgb, var(--accent) 18%, transparent) 21px 22px), repeating-linear-gradient(0deg, transparent 0 21px, color-mix(in srgb, var(--accent) 18%, transparent) 21px 22px), var(--accent-soft); }
+.scope .trace { position: absolute; top: 0; left: 0; width: 440px; height: 128px; animation: trace 1.6s linear infinite; }
+.scope .trace path { fill: none; stroke: var(--accent); stroke-width: 2.4; stroke-linecap: round; }
+.scope .bolt { position: absolute; inset: 0; display: grid; place-items: center; }
+.scope .bolt svg { width: 46px; height: 46px; filter: drop-shadow(0 0 6px var(--bg)); }
+.scope .read { position: absolute; bottom: 7px; left: 10px; font: 600 11px/1 var(--font-data); color: var(--accent); letter-spacing: .04em; }
+.scope .live { position: absolute; top: 9px; right: 10px; width: 8px; height: 8px; border-radius: 50%; background: var(--good); animation: live 1.6s ease-in-out infinite; }
+@keyframes trace { to { transform: translateX(-110px); } }
+@keyframes live { 50% { opacity: .3; } }
+@media (prefers-reduced-motion: reduce) { .scope .trace, .scope .live { animation: none; } }
+.lock h1 { font: 28px/1.15 var(--font-display); }
+.pattern { position: relative; width: min(300px, 82vw); max-width: 100%; aspect-ratio: 1; margin: 0 auto; direction: ltr; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; border-radius: 24px; background: var(--surface); border: 1px solid var(--line); cursor: pointer; }
+.pat-lines { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
+.pat-lines polyline, .pat-lines line { fill: none; stroke: var(--accent); stroke-width: 7; stroke-linecap: round; stroke-linejoin: round; opacity: .8; }
+.pat-dot { position: absolute; width: 18px; height: 18px; margin: -9px 0 0 -9px; border-radius: 50%; background: var(--muted); opacity: .5; pointer-events: none; transition: transform .12s ease, background-color .12s ease, opacity .12s ease; }
+.pat-dot.on { background: var(--accent); opacity: 1; transform: scale(1.4); box-shadow: 0 0 0 7px color-mix(in srgb, var(--accent) 22%, transparent); }
+.pattern.bad polyline, .pattern.bad line { stroke: var(--bad); }
+.pattern.bad .pat-dot.on { background: var(--bad); box-shadow: 0 0 0 7px color-mix(in srgb, var(--bad) 22%, transparent); }
+.pattern.good polyline, .pattern.good line { stroke: var(--good); }
+.pattern.good .pat-dot.on { background: var(--good); box-shadow: 0 0 0 7px color-mix(in srgb, var(--good) 22%, transparent); }
+.pattern.wait { opacity: .6; }
+.pat-step { font: 18px/1.3 var(--font-display); }
+@media (prefers-reduced-motion: reduce) { .pat-dot { transition: none; } }
+.lock .form { width: 100%; max-width: 360px; text-align: start; }
+.err { color: var(--bad); font-size: 14px; font-weight: 600; min-height: 1.2em; }
+.linkbtn { border: 0; background: none; color: var(--accent); font-weight: 700; cursor: pointer; padding: 6px; text-decoration: underline; }
+@media (max-width: 360px) { .big { font-size: 28px; } .ring, .ring svg { width: 72px; height: 72px; } }
+</style>
+
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+(() => {
+'use strict';
+const COMPANY = 'גרינפלסטש הנדסה', PHONE = '0523180299';
+const VAULT = 'gp.vault.v1', META = 'gp.meta.v1';
+const $app = document.getElementById('app');
+
+/* ---------- icons ---------- */
+const I = {
+  home: '<path d="M4 11l8-7 8 7v9a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1z"/>',
+  coin: '<circle cx="12" cy="12" r="8.5"/><path d="M14.8 9.2c-.5-.8-1.5-1.3-2.8-1.3-1.6 0-2.7.8-2.7 2s1.1 1.7 2.7 2.1 2.8.9 2.8 2.1-1.2 2-2.8 2c-1.3 0-2.4-.5-2.9-1.4M12 6.3v1.6M12 16.1v1.6"/>',
+  doc: '<path d="M7 3h7l5 5v12a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M14 3v5h5M9 13h6M9 17h6"/>',
+  tool: '<path d="M14.5 6.5a4 4 0 0 0-5.3 5.3L4 17l3 3 5.2-5.2a4 4 0 0 0 5.3-5.3l-2.4 2.4-2.6-.4-.4-2.6z"/>',
+  more: '<circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>',
+  lock: '<rect x="5" y="10.5" width="14" height="10" rx="2"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/>',
+  back: '<path d="M9 5l7 7-7 7"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  x: '<path d="M6 6l12 12M18 6L6 18"/>',
+  wa: '<path d="M4.5 19.5l1.2-3.9A8 8 0 1 1 8.6 18.4z"/><path d="M9.2 8.6c.2-.4.5-.4.8-.4h.5c.2 0 .4.1.5.4l.6 1.5c.1.2 0 .5-.1.6l-.5.6c.6 1.1 1.5 2 2.6 2.6l.6-.5c.2-.2.4-.2.6-.1l1.5.6c.3.1.4.3.4.5v.5c0 .3 0 .6-.4.8-.6.4-1.5.5-2.3.2a9 9 0 0 1-5-5c-.3-.8-.2-1.7.2-2.3z"/>',
+  copy: '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/>',
+  users: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.2a6.5 6.5 0 0 1 3.5 5.8"/>',
+};
+const ic = (n) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${I[n]}</svg>`;
+const MARK = '<svg class="mark" viewBox="0 0 32 32" aria-hidden="true"><rect x="1" y="1" width="30" height="30" rx="9" style="fill:var(--accent-soft)"/><path d="M18.6 4.5L8.8 18.2h6.4l-1.8 9.3 9.8-13.7h-6.4z" style="fill:var(--accent)"/></svg>';
+
+/* ---------- helpers ---------- */
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
+const nf = new Intl.NumberFormat('he-IL', { maximumFractionDigits: 0 });
+const ils = (n) => `<span class="num">${nf.format(Math.round(n || 0))} ₪</span>`;
+const ilsTxt = (n) => nf.format(Math.round(n || 0));
+const pad = (n) => String(n).padStart(2, '0');
+const iso = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const today = () => iso(new Date());
+const parse = (s) => { const [y, m, d] = String(s).split('-').map(Number); return new Date(y, (m || 1) - 1, d || 1); };
+const fmtD = (s) => { if (!s) return ''; const d = parse(s); return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()}`; };
+const addDays = (s, n) => { const d = parse(s); d.setDate(d.getDate() + Number(n || 0)); return iso(d); };
+const diffDays = (a, b) => Math.round((parse(a) - parse(b)) / 86400000);
+const addBusiness = (s, n) => { const d = parse(s); let left = Number(n || 0); while (left > 0) { d.setDate(d.getDate() + 1); const w = d.getDay(); if (w !== 5 && w !== 6) left--; } return iso(d); };
+const num = (v) => { const x = parseFloat(String(v ?? '').replace(/,/g, '')); return Number.isFinite(x) ? x : 0; };
+const waNum = (p) => { let d = String(p || '').replace(/\D/g, ''); if (!d) return ''; if (d.startsWith('972')) return d; if (d.startsWith('0')) d = d.slice(1); return '972' + d; };
+const waLink = (phone, text) => { const n = waNum(phone); return n ? `https://wa.me/${n}?text=${encodeURIComponent(text)}` : ''; };
+
+/* ---------- data model ---------- */
+const PRICE_SEED = [
+  ['נקודות', 'נקודת מאור', 'נקודה'], ['נקודות', 'נקודת שקע רגיל', 'נקודה'], ['נקודות', 'שקע כוח 16A', 'נקודה'],
+  ['נקודות', 'נקודת מזגן', 'נקודה'], ['נקודות', 'נקודת תקשורת / טלוויזיה', 'נקודה'], ['נקודות', 'הזנה לדוד / בוילר', 'נקודה'],
+  ['תאורה', 'התקנת גוף תאורה', 'יחידה'], ['תאורה', 'התקנת ספוט שקוע', 'יחידה'], ['תאורה', 'התקנת פס לד', 'מטר'],
+  ['לוחות', 'החלפת לוח חשמל דירתי', 'יחידה'], ['לוחות', 'הוספת מאמ"ת', 'יחידה'], ['לוחות', 'התקנת ממסר פחת', 'יחידה'],
+  ['שונות', 'הכנה לעמדת טעינה לרכב חשמלי', 'יחידה'], ['שונות', 'בדיקת הארקה', 'בדיקה'],
+  ['עבודה', 'שעת עבודה', 'שעה'], ['עבודה', 'יום עבודה', 'יום'],
+];
+const blank = () => ({
+  v: 1,
+  settings: { vat: 18, validity: 21, terms: 30, follow: 7, lastQuote: 4039, backupAt: '' },
+  clients: [], quotes: [], jobs: [], debts: [],
+  prices: PRICE_SEED.map(([cat, name, unit]) => ({ id: uid(), cat, name, unit, price: '' })),
+});
+function demo() {
+  const d = blank(), t = today();
+  d.settings.backupAt = t;
+  const c = (name, phone, address) => { const o = { id: uid(), name, phone, address, email: '', notes: 'דוגמה' }; d.clients.push(o); return o.name; };
+  const a = c('משפחת כהן (דוגמה)', '050-1234567', 'טבריה'), b = c('מאפיית השדה (דוגמה)', '052-7654321', 'עפולה'), e = c('בית ספר אורנים (דוגמה)', '054-1112233', 'נוף הגליל');
+  d.prices.forEach((p, i) => { p.price = [180, 160, 260, 320, 150, 380, 120, 95, 70, 4200, 140, 450, 1800, 350, 220, 1600][i]; });
+  d.quotes.push(
+    { id: uid(), no: 4036, date: addDays(t, -24), client: a, location: 'טבריה, רחוב הגליל', status: 'approved', sentDate: addDays(t, -24), docUrl: '', notes: '', supply: { materials: 'גרינפלסטש הנדסה', lighting: 'הלקוח', accessories: 'גרינפלסטש הנדסה' },
+      items: [{ area: 'מטבח', name: 'נקודת שקע רגיל', qty: 6, unit: 'נקודה', price: 160 }, { area: 'מטבח', name: 'שקע כוח 16A', qty: 2, unit: 'נקודה', price: 260 }, { area: 'סלון', name: 'התקנת ספוט שקוע', qty: 10, unit: 'יחידה', price: 95 }] },
+    { id: uid(), no: 4038, date: addDays(t, -9), client: b, location: 'עפולה, אזור תעשייה', status: 'sent', sentDate: addDays(t, -9), docUrl: '', notes: '', supply: { materials: 'גרינפלסטש הנדסה', lighting: 'גרינפלסטש הנדסה', accessories: 'גרינפלסטש הנדסה' },
+      items: [{ area: 'לוח ראשי', name: 'החלפת לוח חשמל דירתי', qty: 1, unit: 'יחידה', price: 6800 }, { area: 'אולם ייצור', name: 'שקע כוח 16A', qty: 8, unit: 'נקודה', price: 260 }] },
+    { id: uid(), no: 4039, date: addDays(t, -2), client: e, location: 'נוף הגליל', status: 'sent', sentDate: addDays(t, -2), docUrl: '', notes: '', supply: { materials: 'הלקוח', lighting: 'הלקוח', accessories: 'גרינפלסטש הנדסה' },
+      items: [{ area: 'כיתות', name: 'התקנת גוף תאורה', qty: 24, unit: 'יחידה', price: 120 }] });
+  d.settings.lastQuote = 4039;
+  d.jobs.push({ id: uid(), no: 1, quoteId: d.quotes[0].id, client: a, location: 'טבריה, רחוב הגליל', status: 'done', start: addDays(t, -18), end: addDays(t, -4), amount: 2430, billed: false, notes: '' });
+  d.debts.push(
+    { id: uid(), no: '1021', date: addDays(t, -52), client: b, for: 'תיקון תקלה בלוח', amount: 2950, terms: 30, payments: [{ date: addDays(t, -40), amount: 1000 }], notes: '' },
+    { id: uid(), no: '1024', date: addDays(t, -12), client: e, for: 'החלפת גופי תאורה במסדרון', amount: 6490, terms: 30, payments: [], notes: '' },
+    { id: uid(), no: '1019', date: addDays(t, -70), client: a, for: 'הכנה למזגנים', amount: 3540, terms: 30, payments: [{ date: addDays(t, -35), amount: 3540 }], notes: '' });
+  return d;
+}
+
+/* ---------- derived ---------- */
+const S = () => db.settings;
+const vatRate = () => num(S().vat) / 100;
+const qSub = (q) => (q.items || []).reduce((s, it) => s + num(it.qty) * num(it.price), 0);
+const qValid = (q) => addBusiness(q.date, S().validity);
+const qState = (q) => {
+  if (q.status !== 'sent') return '';
+  if (today() > qValid(q)) return 'expired';
+  if (diffDays(today(), q.sentDate || q.date) >= num(S().follow)) return 'follow';
+  return '';
+};
+const dPaid = (d) => (d.payments || []).reduce((s, p) => s + num(p.amount), 0);
+const dBal = (d) => num(d.amount) - dPaid(d);
+const dDue = (d) => addDays(d.date, d.terms === '' || d.terms == null ? S().terms : d.terms);
+const dState = (d) => (dBal(d) <= 0 ? 'paid' : today() > dDue(d) ? 'late' : 'open');
+const dLate = (d) => (dState(d) === 'late' ? diffDays(today(), dDue(d)) : 0);
+const client = (name) => db.clients.find((c) => c.name === name);
+const nextQuoteNo = () => Math.max(num(S().lastQuote), ...db.quotes.map((q) => num(q.no))) + 1;
+const nextJobNo = () => Math.max(0, ...db.jobs.map((j) => num(j.no))) + 1;
+const Q_ST = { draft: ['טיוטה', ''], sent: ['נשלחה', 'acc'], approved: ['אושרה', 'good'], rejected: ['נדחתה', 'bad'] };
+const J_ST = { planned: ['מתוכננת', ''], active: ['בביצוע', 'acc'], done: ['הסתיימה', 'good'], cancelled: ['בוטלה', 'bad'] };
+const D_ST = { open: ['פתוח', 'acc'], late: ['באיחור', 'bad'], paid: ['שולם', 'good'] };
+const chip = ([t, c]) => `<span class="chip ${c}">${esc(t)}</span>`;
+const remindText = (d) => `שלום ${d.client}, תזכורת ידידותית לגבי יתרה לתשלום בסך ${ilsTxt(dBal(d))} ש"ח עבור ${d.for || 'העבודה שבוצעה'}. תודה, ${COMPANY}`;
+
+function quoteText(q) {
+  const areas = [];
+  (q.items || []).forEach((it) => {
+    const key = it.area || 'כללי';
+    let g = areas.find((a) => a.k === key); if (!g) { g = { k: key, lines: [] }; areas.push(g); }
+    const n = num(it.qty);
+    g.lines.push(`- ${it.name}${n > 1 ? ` (${n} ${it.unit || 'יח\''})` : ''}`);
+  });
+  const sp = q.supply || {};
+  return [
+    `הצעת מחיר מס' ${q.no}`, `תאריך: ${fmtD(q.date)}`, `לכבוד: ${q.client}`, `מיקום: ${q.location || ''}`, '',
+    'תיאור העבודה:', ...areas.flatMap((a, i) => [...(i ? [''] : []), a.k, ...a.lines]), '',
+    'אספקה:', `- חומרים: ${sp.materials || ''}`, `- גופי תאורה: ${sp.lighting || ''}`, `- אביזרים: ${sp.accessories || ''}`, '',
+    `מחיר: ${ilsTxt(qSub(q))} ש"ח`, '',
+    'הערות:', '- המחיר אינו כולל מע"מ', `- תוקף ההצעה: ${S().validity} ימי עסקים`, '',
+    'בברכה,', COMPANY, PHONE,
+  ].join('\n');
+}
+
+/* ---------- vault (AES-GCM, key from password via PBKDF2) ---------- */
+const enc = new TextEncoder(), dec = new TextDecoder();
+const b64 = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf)));
+const unb64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); return true; } catch { return false; } },
+  del(k) { try { localStorage.removeItem(k); } catch {} },
+};
+const ITER = 600000, OLD_ITER = 310000;
+async function derive(pass, salt, iter = ITER) {
+  const base = await crypto.subtle.importKey('raw', enc.encode(pass), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey({ name: 'PBKDF2', salt, iterations: iter, hash: 'SHA-256' }, base, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+}
+async function seal(key, salt, obj, mode, iter) {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, enc.encode(JSON.stringify(obj)));
+  return JSON.stringify({ v: 1, mode, iter, salt: b64(salt), iv: b64(iv), ct: b64(ct) });
+}
+async function open(pass, blob) {
+  const o = JSON.parse(blob);
+  const salt = unb64(o.salt), iter = o.iter || OLD_ITER;
+  const key = await derive(pass, salt, iter);
+  const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: unb64(o.iv) }, key, unb64(o.ct));
+  return { key, salt, iter, mode: o.mode || 'text', data: JSON.parse(dec.decode(pt)) };
+}
+const PEPPER = 'gp-pattern-v1:';
+const patKey = (seq) => PEPPER + seq.join('-');
+const vaultMode = () => { try { return JSON.parse(store.get(VAULT) || 'null')?.mode || 'text'; } catch { return 'text'; } };
+
+/* ---------- pattern pad: 3x3 dots, drawn with a finger ---------- */
+function mountPattern(root, onDone) {
+  const C = (i) => [50 + 100 * (i % 3), 50 + 100 * Math.floor(i / 3)];
+  root.innerHTML = '<svg class="pat-lines" viewBox="0 0 300 300" aria-hidden="true"><polyline points=""></polyline><line x1="0" y1="0" x2="0" y2="0"></line></svg>'
+    + Array.from({ length: 9 }, (_, i) => `<span class="pat-dot" style="left:${(C(i)[0] / 3).toFixed(2)}%;top:${(C(i)[1] / 3).toFixed(2)}%"></span>`).join('');
+  root.setAttribute('role', 'application'); root.setAttribute('aria-label', 'משטח תבנית נעילה של 9 נקודות');
+  const dots = [...root.querySelectorAll('.pat-dot')], poly = root.querySelector('polyline'), tail = root.querySelector('line');
+  let seq = [], active = false, busy = false, timer;
+  const pt = (e) => { const r = root.getBoundingClientRect(); return [(e.clientX - r.left) * 300 / r.width, (e.clientY - r.top) * 300 / r.height]; };
+  const hit = (p) => { for (let i = 0; i < 9; i++) { const [x, y] = C(i); if (Math.hypot(p[0] - x, p[1] - y) < 34) return i; } return -1; };
+  const add = (i) => {
+    if (seq.includes(i)) return;
+    const last = seq[seq.length - 1];
+    if (last != null) { // passing straight over a dot connects it, like on a phone
+      const ax = last % 3, ay = Math.floor(last / 3), bx = i % 3, by = Math.floor(i / 3);
+      if ((ax + bx) % 2 === 0 && (ay + by) % 2 === 0) { const m = ((ay + by) / 2) * 3 + (ax + bx) / 2; if (!seq.includes(m)) seq.push(m); }
+    }
+    seq.push(i); try { navigator.vibrate?.(8); } catch {}
+  };
+  const draw = (p) => {
+    poly.setAttribute('points', seq.map((i) => C(i).join(',')).join(' '));
+    const [x, y] = seq.length ? C(seq[seq.length - 1]) : [0, 0];
+    tail.setAttribute('x1', x); tail.setAttribute('y1', y);
+    tail.setAttribute('x2', p && seq.length ? p[0] : x); tail.setAttribute('y2', p && seq.length ? p[1] : y);
+    dots.forEach((d, i) => d.classList.toggle('on', seq.includes(i)));
+  };
+  const reset = () => { clearTimeout(timer); seq = []; root.classList.remove('bad', 'good', 'wait'); draw(); };
+  root.addEventListener('pointerdown', (e) => {
+    if (busy) return; e.preventDefault(); reset(); active = true;
+    try { root.setPointerCapture(e.pointerId); } catch {}
+    const p = pt(e), h = hit(p); if (h >= 0) add(h); draw(p);
+  });
+  root.addEventListener('pointermove', (e) => { if (!active) return; e.preventDefault(); const p = pt(e), h = hit(p); if (h >= 0) add(h); draw(p); });
+  const end = () => { if (!active) return; active = false; draw(); if (seq.length) onDone(seq.slice(), api); };
+  root.addEventListener('pointerup', end); root.addEventListener('pointercancel', end);
+  const api = {
+    reset,
+    hold(kind) { busy = true; root.classList.add(kind); },
+    release() { busy = false; root.classList.remove('wait', 'good'); },
+    flash(kind, ms = 650) { busy = true; root.classList.remove('wait'); root.classList.add(kind); timer = setTimeout(() => { busy = false; reset(); }, ms); },
+  };
+  return api;
+}
+
+/* ---------- app state ---------- */
+let db = null, KEY = null, SALT = null, KITER = ITER, MODE = 'pattern', demoMode = false;
+let lockState = { first: null, fails: 0, until: 0 }, chg = { step: 'new', first: null }, countdown;
+let tab = 'home', sheet = null, filter = { debts: 'due', quotes: 'active', jobs: 'active' };
+let saving = Promise.resolve();
+function save() {
+  if (demoMode || !KEY) return;
+  saving = saving.then(async () => { const blob = await seal(KEY, SALT, db, MODE, KITER); if (!store.set(VAULT, blob)) toast('השמירה נכשלה. בדוק שהדפדפן מאפשר אחסון'); });
+}
+
+/* ---------- toast & confirm ---------- */
+let toastT;
+function toast(msg) {
+  document.querySelector('.toast')?.remove();
+  const el = document.createElement('div'); el.className = 'toast'; el.setAttribute('role', 'status'); el.textContent = msg;
+  document.body.append(el); clearTimeout(toastT); toastT = setTimeout(() => el.remove(), 2600);
+}
+function ask(title, body, okLabel, okClass, onOk) {
+  const el = document.createElement('div'); el.className = 'scrim';
+  el.innerHTML = `<div class="dialog" role="dialog" aria-modal="true"><h3>${esc(title)}</h3><div class="muted">${esc(body)}</div><div class="btns full"><button class="btn" data-no>ביטול</button><button class="btn ${okClass}" data-yes>${esc(okLabel)}</button></div></div>`;
+  el.addEventListener('click', (e) => { if (e.target === el || e.target.closest('[data-no]')) el.remove(); if (e.target.closest('[data-yes]')) { el.remove(); onOk(); } });
+  document.body.append(el); el.querySelector('[data-yes]').focus();
+}
+async function copy(text) {
+  try { await navigator.clipboard.writeText(text); toast('הועתק'); return true; }
+  catch { toast('ההעתקה נחסמה. סמן את הטקסט והעתק ידנית'); return false; }
+}
+
+/* ---------- lock screen ---------- */
+function renderLock(msg = '') {
+  const has = !!store.get(VAULT), can = !!(window.crypto && crypto.subtle);
+  const legacy = has && vaultMode() === 'text';
+  const step = !has ? (lockState.first ? 'צייר שוב את אותה תבנית, לאימות' : 'צייר תבנית נעילה חדשה') : 'צייר את התבנית כדי להיכנס';
+  $app.innerHTML = `<div class="wrap"><div class="lock">
+    <div class="scope" aria-hidden="true"><svg class="trace" viewBox="0 0 440 128"><path d="M0 64 Q27.5 22 55 64 Q82.5 106 110 64 Q137.5 22 165 64 Q192.5 106 220 64 Q247.5 22 275 64 Q302.5 106 330 64 Q357.5 22 385 64 Q412.5 106 440 64"/></svg><div class="bolt"><svg viewBox="0 0 32 32"><path d="M18.6 4.5L8.8 18.2h6.4l-1.8 9.3 9.8-13.7h-6.4z" style="fill:var(--good)"/></svg></div><span class="live"></span><span class="read">230V · 50Hz</span></div>
+    <div><h1>מרכז שליטה</h1><div class="muted">${COMPANY}</div></div>
+    ${!can ? `<div class="banner bad"><span class="dot"></span><div class="grow">הדפדפן הזה לא תומך בהצפנה. צריך לפתוח את האפליקציה בכתובת https.</div></div>` : legacy ? `
+    <form class="form" id="unlock">
+      <div class="field"><label for="pw">סיסמה</label><input id="pw" type="password" autocomplete="current-password" required></div>
+      <div class="err" id="err">${esc(msg)}</div>
+      <button class="btn pri" type="submit">${ic('lock')} כניסה</button>
+    </form>` : `
+    ${!has && !lockState.first ? `<div class="banner info" style="text-align:start"><span class="dot"></span><div class="grow">חבר לפחות 5 נקודות. התבנית היא המפתח שמצפין את הנתונים, <b>ואין לה שחזור.</b> שכחת אותה, הנתונים אבודים אלא אם יש גיבוי.</div></div>` : ''}
+    <div class="pat-step">${step}</div>
+    <div class="pattern" id="pad"></div>
+    <div class="err" id="err" aria-live="polite">${esc(msg)}</div>
+    ${!has && lockState.first ? `<button class="linkbtn" data-act="patRestart">להתחיל מחדש</button>` : ''}`}
+    <button class="linkbtn" data-act="demo">צפייה בהדגמה עם נתונים לדוגמה</button>
+  </div></div>`;
+  const padEl = $app.querySelector('#pad');
+  if (padEl) mountPattern(padEl, onPattern);
+  if (lockState.until > Date.now()) runCountdown();
+  $app.querySelector('#pw')?.focus();
+}
+function runCountdown() {
+  clearInterval(countdown);
+  const tick = () => {
+    const el = $app.querySelector('#err'), left = Math.ceil((lockState.until - Date.now()) / 1000);
+    if (left <= 0) { clearInterval(countdown); if (el) el.textContent = 'אפשר לנסות שוב.'; return; }
+    if (el) el.textContent = `יותר מדי ניסיונות. אפשר לנסות שוב בעוד ${left} שניות.`;
+  };
+  tick(); countdown = setInterval(tick, 1000);
+}
+async function enter(r) {
+  KEY = r.key; SALT = r.salt; KITER = r.iter; MODE = r.mode; db = r.data; demoMode = false;
+  lockState.fails = 0; lockState.until = 0; clearInterval(countdown); tab = 'home'; sheet = null; render();
+}
+async function onPattern(seq, pad) {
+  const err = $app.querySelector('#err');
+  if (!store.get(VAULT)) { // first run: draw twice, then create the vault
+    if (seq.length < 5) { err.textContent = `חיברת ${seq.length} נקודות. צריך לפחות 5.`; pad.flash('bad'); return; }
+    if (!lockState.first) { lockState.first = seq.join('-'); pad.flash('good', 350); setTimeout(() => renderLock(), 360); return; }
+    if (lockState.first !== seq.join('-')) { lockState.first = null; pad.flash('bad'); setTimeout(() => renderLock('התבניות לא זהות. מתחילים מחדש.'), 660); return; }
+    pad.hold('good'); err.textContent = 'יוצר כספת…';
+    SALT = crypto.getRandomValues(new Uint8Array(16)); KITER = ITER; MODE = 'pattern'; KEY = await derive(patKey(seq), SALT, KITER);
+    lockState.first = null; db = blank(); demoMode = false; save(); await saving;
+    try { navigator.storage?.persist?.(); } catch {}
+    tab = 'home'; sheet = null; render(); toast('הכספת נוצרה'); return;
+  }
+  if (Date.now() < lockState.until) { pad.flash('bad'); return; }
+  pad.hold('wait'); err.textContent = 'פותח…';
+  try { await enter(await open(patKey(seq), store.get(VAULT))); }
+  catch {
+    lockState.fails++; pad.flash('bad');
+    if (lockState.fails >= 5) { lockState.until = Date.now() + 30000 * 2 ** (lockState.fails - 5); runCountdown(); }
+    else err.textContent = `תבנית שגויה. עוד ${5 - lockState.fails} ניסיונות לפני השהיה.`;
+  }
+}
+async function onUnlock(e) { // older vaults that were created with a typed password
+  e.preventDefault();
+  const pw = $app.querySelector('#pw').value, err = $app.querySelector('#err');
+  err.textContent = 'פותח את הכספת…';
+  try { await enter(await open(pw, store.get(VAULT))); toast('אפשר לעבור לתבנית בלשונית לקוחות ועוד'); }
+  catch { err.textContent = 'הסיסמה שגויה. נסה שוב.'; $app.querySelector('#pw').select(); }
+}
+function lock() { db = null; KEY = null; SALT = null; demoMode = false; sheet = null; lockState.first = null; renderLock(); }
+
+/* ---------- views ---------- */
+function ring(pct, label, color = 'var(--accent)') {
+  const r = 36, c = 2 * Math.PI * r, p = Math.max(0, Math.min(1, pct));
+  return `<div class="ring" role="img" aria-label="${esc(label)} ${Math.round(p * 100)}%"><svg viewBox="0 0 84 84"><circle cx="42" cy="42" r="${r}" fill="none" stroke="var(--surface-2)" stroke-width="7"/><circle cx="42" cy="42" r="${r}" fill="none" stroke="${color}" stroke-width="7" stroke-linecap="round" stroke-dasharray="${c * p} ${c}"/></svg><div class="val num">${Math.round(p * 100)}%</div><div class="cap">${esc(label)}</div></div>`;
+}
+function debtRow(d) {
+  const st = dState(d), bal = dBal(d);
+  const stripe = st === 'late' ? 'bad' : st === 'paid' ? 'good' : 'acc';
+  const sub = st === 'paid' ? `שולם במלואו · ${fmtD(d.date)}` : st === 'late' ? `באיחור של ${dLate(d)} ימים · יעד ${fmtD(dDue(d))}` : `לתשלום עד ${fmtD(dDue(d))}`;
+  return `<button class="row" data-open="debt" data-id="${d.id}"><span class="stripe ${stripe}"></span><span class="grow"><span class="t">${esc(d.client)}</span><span class="s">${esc(d.for || '')} · ${sub}</span></span><span class="end"><span class="amt">${ils(st === 'paid' ? d.amount : bal)}</span>${chip(D_ST[st])}</span></button>`;
+}
+function quoteRow(q) {
+  const s = qState(q), total = qSub(q);
+  const stripe = s === 'follow' ? 'warn' : q.status === 'approved' ? 'good' : q.status === 'rejected' || s === 'expired' ? 'bad' : q.status === 'sent' ? 'acc' : '';
+  const extra = s === 'follow' ? `<span class="chip warn">לחזור ללקוח</span>` : s === 'expired' ? `<span class="chip bad">פג תוקף</span>` : chip(Q_ST[q.status]);
+  return `<button class="row" data-open="quote" data-id="${q.id}"><span class="stripe ${stripe}"></span><span class="grow"><span class="t"><span class="num mono">${esc(q.no)}</span> · ${esc(q.client)}</span><span class="s">${esc(q.location || '')} · ${fmtD(q.date)}</span></span><span class="end"><span class="amt">${ils(total)}</span>${extra}</span></button>`;
+}
+function jobRow(j) {
+  const warn = j.status === 'done' && !j.billed;
+  return `<button class="row" data-open="job" data-id="${j.id}"><span class="stripe ${warn ? 'bad' : j.status === 'active' ? 'acc' : j.status === 'done' ? 'good' : ''}"></span><span class="grow"><span class="t">${esc(j.client)}</span><span class="s">עבודה ${esc(j.no)} · ${esc(j.location || '')}</span></span><span class="end"><span class="amt">${ils(j.amount)}</span>${warn ? '<span class="chip bad">לא הועבר לגבייה</span>' : chip(J_ST[j.status])}</span></button>`;
+}
+
+function viewHome() {
+  const debts = db.debts, open = debts.filter((d) => dState(d) !== 'paid');
+  const openSum = open.reduce((s, d) => s + dBal(d), 0);
+  const late = debts.filter((d) => dState(d) === 'late').sort((a, b) => dLate(b) - dLate(a));
+  const lateSum = late.reduce((s, d) => s + dBal(d), 0);
+  const billed = debts.reduce((s, d) => s + num(d.amount), 0), paid = debts.reduce((s, d) => s + Math.min(dPaid(d), num(d.amount)), 0);
+  const sent = db.quotes.filter((q) => q.status === 'sent' && qState(q) !== 'expired');
+  const follow = db.quotes.filter((q) => qState(q) === 'follow');
+  const won = db.quotes.filter((q) => q.status === 'approved').length, lost = db.quotes.filter((q) => q.status === 'rejected').length;
+  const unbilled = db.jobs.filter((j) => j.status === 'done' && !j.billed);
+  const active = db.jobs.filter((j) => j.status === 'active').length;
+  const backupAge = S().backupAt ? diffDays(today(), S().backupAt) : null;
+  const actions = [
+    ...late.map((d) => `<div class="row" style="cursor:default"><span class="stripe bad"></span><span class="grow"><span class="t">${esc(d.client)} חייב ${ils(dBal(d))}</span><span class="s">באיחור של ${dLate(d)} ימים · ${esc(d.for || '')}</span></span>${remindBtn(d)}</div>`),
+    ...unbilled.map((j) => `<button class="row" data-open="job" data-id="${j.id}"><span class="stripe bad"></span><span class="grow"><span class="t">עבודה הסתיימה ולא הועברה לגבייה</span><span class="s">${esc(j.client)} · ${ils(j.amount)} לפני מע"מ</span></span><span class="chip bad">לגבייה</span></button>`),
+    ...follow.map((q) => `<button class="row" data-open="quote" data-id="${q.id}"><span class="stripe warn"></span><span class="grow"><span class="t">לחזור ל${esc(q.client)}</span><span class="s">הצעה ${esc(q.no)} נשלחה לפני ${diffDays(today(), q.sentDate || q.date)} ימים · ${ils(qSub(q))}</span></span><span class="chip warn">מעקב</span></button>`),
+  ];
+  return `
+  ${demoMode ? `<div class="banner warn"><span class="dot"></span><div class="grow"><b>מצב הדגמה.</b> הנתונים בדויים ושום דבר לא נשמר. <button class="linkbtn" data-act="lock">יציאה</button></div></div>` : ''}
+  ${!demoMode && (backupAge === null ? db.debts.length + db.quotes.length > 0 : backupAge >= 7) ? `<div class="banner warn"><span class="dot"></span><div class="grow"><b>${backupAge === null ? 'עוד לא נעשה גיבוי' : `הגיבוי האחרון לפני ${backupAge} ימים`}</b>אם הטלפון יאבד או יתאפס, הנתונים ילכו איתו. <button class="linkbtn" data-sheet="backup">לגיבוי</button></div></div>` : ''}
+  <div class="card hero">
+    <div class="grow">
+      <span class="eyebrow">כסף פתוח לגבייה</span>
+      <span class="big">${ils(openSum)}</span>
+      <div class="chips">${lateSum > 0 ? `<span class="chip bad">באיחור ${ils(lateSum)}</span>` : '<span class="chip good">אין חובות באיחור</span>'}<span class="chip">${open.length} חובות פתוחים</span></div>
+    </div>
+    ${ring(billed ? paid / billed : 0, 'נגבה', 'var(--good)')}
+  </div>
+  <div class="strip">
+    <button class="stat" data-tab="quotes"><span class="v">${sent.length}</span><span class="l">הצעות ממתינות</span></button>
+    <button class="stat" data-tab="quotes"><span class="v">${ils(sent.reduce((s, q) => s + qSub(q), 0))}</span><span class="l">שווי ממתין, לפני מע"מ</span></button>
+    <button class="stat" data-tab="quotes"><span class="v num">${won + lost ? Math.round((won / (won + lost)) * 100) : 0}%</span><span class="l">אחוז סגירת הצעות</span></button>
+    <button class="stat" data-tab="jobs"><span class="v">${active}</span><span class="l">עבודות בביצוע</span></button>
+  </div>
+  <div class="section-title"><h2>דורש טיפול</h2><span class="muted small">${actions.length ? `${actions.length} פריטים` : ''}</span></div>
+  <div class="card">${actions.length ? `<div class="rows">${actions.join('')}</div>` : `<div class="empty"><b>אין משהו דחוף</b><span>חובות באיחור, הצעות שצריך לחזור עליהן ועבודות שלא חויבו יופיעו כאן.</span></div>`}</div>`;
+}
+function remindBtn(d) {
+  const ph = client(d.client)?.phone;
+  return ph ? `<a class="btn good sm" href="${esc(waLink(ph, remindText(d)))}" target="_blank" rel="noopener">${ic('wa')} תזכורת</a>` : `<button class="btn sm" data-open="debt" data-id="${d.id}">פתח</button>`;
+}
+function filters(key, opts) {
+  return `<div class="filters" role="group">${opts.map(([v, l, n]) => `<button aria-pressed="${filter[key] === v}" data-filter="${key}" data-v="${v}">${l}${n != null ? ` · ${n}` : ''}</button>`).join('')}</div>`;
+}
+function viewDebts() {
+  const all = db.debts.slice().sort((a, b) => (dState(b) === 'late') - (dState(a) === 'late') || (dState(a) === 'paid') - (dState(b) === 'paid') || dDue(a).localeCompare(dDue(b)));
+  const by = { due: all.filter((d) => dState(d) !== 'paid'), late: all.filter((d) => dState(d) === 'late'), paid: all.filter((d) => dState(d) === 'paid'), all };
+  const list = by[filter.debts];
+  return `<div class="section-title"><h2>גבייה</h2></div>
+  ${filters('debts', [['due', 'לגבות', by.due.length], ['late', 'באיחור', by.late.length], ['paid', 'שולם', by.paid.length], ['all', 'הכל', all.length]])}
+  <div class="card">${list.length ? `<div class="rows">${list.map(debtRow).join('')}</div>` : `<div class="empty"><b>אין כאן חובות</b><span>כל עבודה שהסתיימה נרשמת כאן עם הסכום ותאריך החשבונית.</span></div>`}</div>
+  <button class="fab" data-sheet="debtForm">${ic('plus')} חוב חדש</button>`;
+}
+function viewQuotes() {
+  const all = db.quotes.slice().sort((a, b) => num(b.no) - num(a.no));
+  const by = { active: all.filter((q) => q.status === 'draft' || (q.status === 'sent' && qState(q) !== 'expired')), follow: all.filter((q) => qState(q) === 'follow'), approved: all.filter((q) => q.status === 'approved'), all };
+  const list = by[filter.quotes];
+  return `<div class="section-title"><h2>הצעות מחיר</h2><span class="muted small">הבאה: <span class="num mono">${nextQuoteNo()}</span></span></div>
+  ${filters('quotes', [['active', 'פתוחות', by.active.length], ['follow', 'לחזור ללקוח', by.follow.length], ['approved', 'אושרו', by.approved.length], ['all', 'הכל', all.length]])}
+  <div class="card">${list.length ? `<div class="rows">${list.map(quoteRow).join('')}</div>` : `<div class="empty"><b>אין הצעות ברשימה הזו</b><span>הצעה חדשה נבנית מהמחירון ומפיקה טקסט מוכן לוואטסאפ.</span></div>`}</div>
+  <button class="fab" data-sheet="quoteForm">${ic('plus')} הצעה חדשה</button>`;
+}
+function viewJobs() {
+  const all = db.jobs.slice().sort((a, b) => num(b.no) - num(a.no));
+  const by = { active: all.filter((j) => j.status === 'planned' || j.status === 'active' || (j.status === 'done' && !j.billed)), done: all.filter((j) => j.status === 'done' && j.billed), all };
+  const list = by[filter.jobs];
+  return `<div class="section-title"><h2>עבודות</h2></div>
+  ${filters('jobs', [['active', 'פתוחות', by.active.length], ['done', 'הסתיימו וחויבו', by.done.length], ['all', 'הכל', all.length]])}
+  <div class="card">${list.length ? `<div class="rows">${list.map(jobRow).join('')}</div>` : `<div class="empty"><b>אין עבודות ברשימה הזו</b><span>הצעה שאושרה הופכת לעבודה בלחיצה אחת.</span></div>`}</div>
+  <button class="fab" data-sheet="jobForm">${ic('plus')} עבודה חדשה</button>`;
+}
+function viewMore() {
+  const owed = (name) => db.debts.filter((d) => d.client === name && dState(d) !== 'paid').reduce((s, d) => s + dBal(d), 0);
+  const cl = db.clients.slice().sort((a, b) => owed(b.name) - owed(a.name) || a.name.localeCompare(b.name, 'he'));
+  return `<div class="section-title"><h2>לקוחות</h2><button class="btn sm" data-sheet="clientForm">${ic('plus')} לקוח</button></div>
+  <div class="card">${cl.length ? `<div class="rows">${cl.map((c) => { const o = owed(c.name); return `<button class="row" data-open="client" data-id="${c.id}"><span class="grow"><span class="t">${esc(c.name)}</span><span class="s">${esc([c.address, c.phone].filter(Boolean).join(' · '))}</span></span>${o > 0 ? `<span class="end"><span class="amt">${ils(o)}</span><span class="chip ${db.debts.some((d) => d.client === c.name && dState(d) === 'late') ? 'bad' : 'acc'}">חייב</span></span>` : ''}</button>`; }).join('')}</div>` : `<div class="empty"><b>אין לקוחות עדיין</b><span>לקוח נוצר לבד כשרושמים הצעה או חוב על שם חדש.</span></div>`}</div>
+  <div class="section-title"><h2>מערכת</h2></div>
+  <div class="card"><div class="rows">
+    <button class="row" data-sheet="prices"><span class="grow"><span class="t">מחירון</span><span class="s">${db.prices.length} פריטים · ${db.prices.filter((p) => p.price === '' || p.price == null).length} בלי מחיר</span></span></button>
+    <button class="row" data-sheet="settings"><span class="grow"><span class="t">הגדרות</span><span class="s">מע"מ ${esc(S().vat)}% · תוקף ${esc(S().validity)} ימי עסקים · תשלום שוטף ${esc(S().terms)}</span></span></button>
+    <button class="row" data-sheet="backup"><span class="grow"><span class="t">גיבוי ושחזור</span><span class="s">${S().backupAt ? `גיבוי אחרון ${fmtD(S().backupAt)}` : 'עוד לא נעשה גיבוי'}</span></span></button>
+    <button class="row" data-sheet="pattern"><span class="grow"><span class="t">${MODE === 'pattern' ? 'שינוי תבנית נעילה' : 'מעבר לנעילה בתבנית'}</span><span class="s">הנתונים מוצפנים על המכשיר</span></span></button>
+    <button class="row" data-act="lock"><span class="grow"><span class="t">נעילה עכשיו</span><span class="s">ננעל לבד אחרי 5 דקות בלי פעילות</span></span></button>
+  </div></div>`;
+}
+
+/* ---------- sheets ---------- */
+const field = (id, label, value = '', type = 'text', extra = '') => `<div class="field"><label for="f-${id}">${label}</label><input id="f-${id}" name="${id}" type="${type}" value="${esc(value)}" ${extra}></div>`;
+const area = (id, label, value = '') => `<div class="field"><label for="f-${id}">${label}</label><textarea id="f-${id}" name="${id}">${esc(value)}</textarea></div>`;
+const select = (id, label, value, opts) => `<div class="field"><label for="f-${id}">${label}</label><select id="f-${id}" name="${id}">${opts.map(([v, l]) => `<option value="${esc(v)}" ${String(v) === String(value) ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select></div>`;
+const clientList = () => `<datalist id="clients">${db.clients.map((c) => `<option value="${esc(c.name)}"></option>`).join('')}</datalist>`;
+const sheetFrame = (title, body) => `<div class="sheet" role="dialog" aria-modal="true" aria-label="${esc(title)}"><div class="sheet-bar"><div class="wrap"><button class="icon-btn" data-act="close" aria-label="חזרה">${ic('back')}</button><h2>${esc(title)}</h2></div></div><div class="wrap sheet-body">${body}</div></div>`;
+const formData = (form) => Object.fromEntries(new FormData(form).entries());
+function ensureClient(name, phone) {
+  name = String(name || '').trim(); if (!name) return '';
+  const c = client(name);
+  if (!c) db.clients.push({ id: uid(), name, phone: phone || '', address: '', email: '', notes: '' });
+  else if (phone && !c.phone) c.phone = phone;
+  return name;
+}
+
+const SHEETS = {
+  debt(id) {
+    const d = db.debts.find((x) => x.id === id); if (!d) return '';
+    const st = dState(d), ph = client(d.client)?.phone;
+    return sheetFrame(`${d.client}`, `
+      <div class="card stack"><span class="eyebrow">יתרה לתשלום</span><span class="total">${ils(Math.max(0, dBal(d)))}</span>${chip(D_ST[st])}
+        <div class="rows">
+          <div class="kv"><span>עבור</span><b>${esc(d.for || '')}</b></div>
+          <div class="kv"><span>מס' דרישה / חשבונית</span><b class="num">${esc(d.no || '')}</b></div>
+          <div class="kv"><span>סכום כולל מע"מ</span><b>${ils(d.amount)}</b></div>
+          <div class="kv"><span>תאריך</span><b class="num">${fmtD(d.date)}</b></div>
+          <div class="kv"><span>תאריך יעד</span><b class="num">${fmtD(dDue(d))}${st === 'late' ? ` · ${dLate(d)} ימי איחור` : ''}</b></div>
+          <div class="kv"><span>טלפון</span><b class="num">${esc(ph || 'אין טלפון ללקוח')}</b></div>
+        </div></div>
+      ${st !== 'paid' ? `<div class="card stack"><h3>רישום תשלום</h3>
+        <form class="form" id="payForm"><div class="grid2">${field('amount', 'סכום', Math.max(0, dBal(d)), 'number', 'inputmode="decimal" min="0" step="1" required')}${field('date', 'תאריך', today(), 'date', 'required')}</div>
+        <button class="btn pri" type="submit">שולם</button></form></div>` : ''}
+      ${st !== 'paid' ? (ph ? `<a class="btn good" href="${esc(waLink(ph, remindText(d)))}" target="_blank" rel="noopener">${ic('wa')} שליחת תזכורת בוואטסאפ</a>` : `<div class="banner info"><span class="dot"></span><div class="grow">כדי לשלוח תזכורת בוואטסאפ צריך להוסיף טלפון ללקוח. <button class="linkbtn" data-sheet="clientForm" data-id="${client(d.client)?.id || ''}">הוספת טלפון</button></div></div>`) : ''}
+      ${(d.payments || []).length ? `<div class="card"><h3>תשלומים</h3><div class="rows">${d.payments.map((p, i) => `<div class="item"><span class="grow num">${fmtD(p.date)}</span><b>${ils(p.amount)}</b><button class="x" aria-label="מחיקת תשלום" data-act="delPay" data-id="${d.id}" data-i="${i}">${ic('x')}</button></div>`).join('')}</div></div>` : ''}
+      ${d.notes ? `<div class="card"><span class="eyebrow">הערות</span><div>${esc(d.notes)}</div></div>` : ''}
+      <div class="btns full"><button class="btn" data-sheet="debtForm" data-id="${d.id}">עריכה</button><button class="btn bad" data-act="delDebt" data-id="${d.id}">מחיקה</button></div>`);
+  },
+  debtForm(id) {
+    const d = db.debts.find((x) => x.id === id) || { date: today(), terms: S().terms };
+    return sheetFrame(id ? 'עריכת חוב' : 'חוב חדש', `<form class="form" id="debtForm" data-id="${id || ''}">${clientList()}
+      ${field('client', 'לקוח', d.client, 'text', 'list="clients" required autocomplete="off"')}
+      ${id ? '' : field('phone', 'טלפון (ללקוח חדש)', '', 'tel', 'inputmode="tel"')}
+      ${field('for', 'עבור', d.for, 'text', 'placeholder="למשל: החלפת לוח חשמל"')}
+      <div class="grid2">${field('amount', 'סכום כולל מע"מ', d.amount, 'number', 'inputmode="decimal" min="0" required')}${field('no', 'מס\' חשבונית', d.no)}</div>
+      <div class="grid2">${field('date', 'תאריך', d.date, 'date', 'required')}${field('terms', 'ימים לתשלום', d.terms, 'number', 'inputmode="numeric" min="0"')}</div>
+      ${area('notes', 'הערות', d.notes)}
+      <button class="btn pri" type="submit">שמירה</button></form>`);
+  },
+  quote(id) {
+    const q = db.quotes.find((x) => x.id === id); if (!q) return '';
+    const s = qState(q), sub = qSub(q), vat = sub * vatRate();
+    const job = db.jobs.find((j) => j.quoteId === q.id);
+    return sheetFrame(`הצעה ${q.no} · ${q.client}`, `
+      <div class="card stack"><span class="eyebrow">סה"כ לפני מע"מ</span><span class="total">${ils(sub)}</span>
+        <div class="chips">${chip(Q_ST[q.status])}${s === 'follow' ? '<span class="chip warn">לחזור ללקוח</span>' : s === 'expired' ? '<span class="chip bad">פג תוקף</span>' : ''}</div>
+        <div class="rows"><div class="kv"><span>מע"מ ${esc(S().vat)}%</span><b>${ils(vat)}</b></div><div class="kv"><span>כולל מע"מ</span><b>${ils(sub + vat)}</b></div>
+        <div class="kv"><span>מיקום</span><b>${esc(q.location || '')}</b></div><div class="kv"><span>תאריך</span><b class="num">${fmtD(q.date)}</b></div><div class="kv"><span>בתוקף עד</span><b class="num">${fmtD(qValid(q))}</b></div>
+        ${q.docUrl ? `<div class="kv"><span>מסמך</span><b><a href="${esc(q.docUrl)}" target="_blank" rel="noopener">פתיחת המסמך</a></b></div>` : ''}</div></div>
+      <div class="card stack"><h3>מצב ההצעה</h3><div class="btns">${Object.entries(Q_ST).map(([k, [l]]) => `<button class="btn sm ${q.status === k ? 'pri' : ''}" data-act="qStatus" data-id="${q.id}" data-v="${k}">${l}</button>`).join('')}</div>
+        ${q.status === 'approved' ? (job ? `<button class="btn" data-open="job" data-id="${job.id}">מעבר לעבודה ${esc(job.no)}</button>` : `<button class="btn good" data-act="toJob" data-id="${q.id}">פתיחת עבודה מההצעה</button>`) : ''}</div>
+      <div class="card stack"><h3>טקסט לוואטסאפ ולמייל</h3><pre class="out" id="qtext">${esc(quoteText(q))}</pre>
+        <div class="btns full"><button class="btn pri" data-act="copyQuote" data-id="${q.id}">${ic('copy')} העתקה</button>${client(q.client)?.phone ? `<a class="btn good" href="${esc(waLink(client(q.client).phone, quoteText(q)))}" target="_blank" rel="noopener">${ic('wa')} שליחה ללקוח</a>` : ''}</div></div>
+      <div class="btns full"><button class="btn" data-sheet="quoteForm" data-id="${q.id}">עריכה</button><button class="btn" data-act="dupQuote" data-id="${q.id}">שכפול</button><button class="btn bad" data-act="delQuote" data-id="${q.id}">מחיקה</button></div>`);
+  },
+  quoteForm(id) {
+    const src = db.quotes.find((x) => x.id === id);
+    if (!draft || draft._for !== (id || 'new')) {
+      draft = src ? JSON.parse(JSON.stringify(src)) : { no: nextQuoteNo(), date: today(), client: '', location: '', status: 'draft', items: [], supply: { materials: '', lighting: '', accessories: '' }, docUrl: '', notes: '' };
+      draft._for = id || 'new';
+    }
+    const q = draft, sub = qSub(q);
+    const cats = [...new Set(db.prices.map((p) => p.cat))];
+    const areas = [...new Set(q.items.map((i) => i.area).filter(Boolean))];
+    return sheetFrame(id ? `עריכת הצעה ${q.no}` : `הצעה חדשה ${q.no}`, `<form class="form" id="quoteForm" data-id="${id || ''}">${clientList()}
+      <div class="grid2">${field('no', 'מס\' הצעה', q.no, 'number', 'inputmode="numeric" required')}${field('date', 'תאריך', q.date, 'date', 'required')}</div>
+      ${field('client', 'לכבוד', q.client, 'text', 'list="clients" required autocomplete="off"')}
+      ${field('location', 'מיקום העבודה', q.location)}
+      <div class="card stack"><div class="section-title" style="margin:0"><h3>תיאור העבודה</h3><span class="num"><b>${ils(sub)}</b></span></div>
+        <div class="rows">${q.items.length ? q.items.map((it, i) => `<div class="item"><span class="grow"><b>${esc(it.name)}</b><span class="s muted small" style="display:block">${esc(it.area || 'כללי')} · ${ils(it.price)} ל${esc(it.unit || 'יח\'')}</span></span><span class="qty"><input aria-label="כמות" inputmode="decimal" data-qty="${i}" value="${esc(it.qty)}"></span><button type="button" class="x" aria-label="הסרה" data-act="rmItem" data-i="${i}">${ic('x')}</button></div>`).join('') : '<div class="empty small">עוד אין פריטים. בחר אזור והוסף פריטים מהמחירון.</div>'}</div>
+        <datalist id="areas">${[...areas, 'מטבח', 'סלון', 'חדרי שינה', 'מקלחות', 'לוח חשמל', 'חצר', 'כללי'].filter((v, i, a) => a.indexOf(v) === i).map((a) => `<option value="${esc(a)}"></option>`).join('')}</datalist>
+        <div class="grid2"><div class="field"><label for="f-area">אזור או סוג עבודה</label><input id="f-area" list="areas" value="${esc(areas[areas.length - 1] || '')}" autocomplete="off"></div>
+        <div class="field"><label for="f-pick">פריט מהמחירון</label><select id="f-pick"><option value="">בחר פריט</option>${cats.map((c) => `<optgroup label="${esc(c)}">${db.prices.filter((p) => p.cat === c).map((p) => `<option value="${p.id}">${esc(p.name)}${p.price !== '' && p.price != null ? ` · ${ilsTxt(p.price)}` : ''}</option>`).join('')}</optgroup>`).join('')}<option value="__free">פריט חופשי</option></select></div></div>
+        <div class="grid2" id="freeRow" hidden><div class="field"><label for="f-fname">תיאור הפריט</label><input id="f-fname"></div><div class="field"><label for="f-fprice">מחיר ליחידה</label><input id="f-fprice" inputmode="decimal"></div></div>
+        <button type="button" class="btn" data-act="addItem">${ic('plus')} הוספה</button></div>
+      <div class="card stack"><h3>אספקה</h3>
+        ${['materials:חומרים', 'lighting:גופי תאורה', 'accessories:אביזרים'].map((p) => { const [k, l] = p.split(':'); return select('s_' + k, l, q.supply[k], [['', 'לבחור'], [COMPANY, COMPANY], ['הלקוח', 'הלקוח'], ['לא רלוונטי', 'לא רלוונטי']]); }).join('')}</div>
+      ${select('status', 'מצב', q.status, Object.entries(Q_ST).map(([k, [l]]) => [k, l]))}
+      ${field('docUrl', 'קישור למסמך בגוגל דוקס', q.docUrl, 'url', 'inputmode="url" placeholder="https://docs.google.com/..."')}
+      ${area('notes', 'הערות פנימיות', q.notes)}
+      <button class="btn pri" type="submit">שמירת ההצעה</button></form>`);
+  },
+  job(id) {
+    const j = db.jobs.find((x) => x.id === id); if (!j) return '';
+    const q = db.quotes.find((x) => x.id === j.quoteId);
+    return sheetFrame(`עבודה ${j.no} · ${j.client}`, `
+      <div class="card stack"><span class="eyebrow">סכום לפני מע"מ</span><span class="total">${ils(j.amount)}</span>
+        <div class="chips">${chip(J_ST[j.status])}${j.billed ? '<span class="chip good">הועבר לגבייה</span>' : j.status === 'done' ? '<span class="chip bad">לא הועבר לגבייה</span>' : ''}</div>
+        <div class="rows"><div class="kv"><span>מיקום</span><b>${esc(j.location || '')}</b></div>${j.start ? `<div class="kv"><span>התחלה</span><b class="num">${fmtD(j.start)}</b></div>` : ''}${j.end ? `<div class="kv"><span>סיום</span><b class="num">${fmtD(j.end)}</b></div>` : ''}
+        ${q ? `<div class="kv"><span>הצעה</span><b><button class="linkbtn" data-open="quote" data-id="${q.id}">${esc(q.no)}</button></b></div>` : ''}</div></div>
+      <div class="card stack"><h3>מצב העבודה</h3><div class="btns">${Object.entries(J_ST).map(([k, [l]]) => `<button class="btn sm ${j.status === k ? 'pri' : ''}" data-act="jStatus" data-id="${j.id}" data-v="${k}">${l}</button>`).join('')}</div>
+        ${j.status === 'done' && !j.billed ? `<button class="btn good" data-act="bill" data-id="${j.id}">העברה לגבייה · ${ils(num(j.amount) * (1 + vatRate()))} כולל מע"מ</button>` : ''}</div>
+      ${j.notes ? `<div class="card"><span class="eyebrow">הערות</span><div>${esc(j.notes)}</div></div>` : ''}
+      <div class="btns full"><button class="btn" data-sheet="jobForm" data-id="${j.id}">עריכה</button><button class="btn bad" data-act="delJob" data-id="${j.id}">מחיקה</button></div>`);
+  },
+  jobForm(id) {
+    const j = db.jobs.find((x) => x.id === id) || { no: nextJobNo(), status: 'planned', start: today() };
+    return sheetFrame(id ? 'עריכת עבודה' : 'עבודה חדשה', `<form class="form" id="jobForm" data-id="${id || ''}">${clientList()}
+      ${field('client', 'לקוח', j.client, 'text', 'list="clients" required autocomplete="off"')}
+      ${field('location', 'מיקום', j.location)}
+      <div class="grid2">${field('amount', 'סכום לפני מע"מ', j.amount, 'number', 'inputmode="decimal" min="0"')}${select('status', 'מצב', j.status, Object.entries(J_ST).map(([k, [l]]) => [k, l]))}</div>
+      <div class="grid2">${field('start', 'התחלה', j.start, 'date')}${field('end', 'סיום', j.end, 'date')}</div>
+      ${area('notes', 'הערות', j.notes)}
+      <button class="btn pri" type="submit">שמירה</button></form>`);
+  },
+  client(id) {
+    const c = db.clients.find((x) => x.id === id); if (!c) return '';
+    const debts = db.debts.filter((d) => d.client === c.name), quotes = db.quotes.filter((q) => q.client === c.name), jobs = db.jobs.filter((j) => j.client === c.name);
+    const owed = debts.filter((d) => dState(d) !== 'paid').reduce((s, d) => s + dBal(d), 0);
+    return sheetFrame(c.name, `
+      <div class="card stack"><span class="eyebrow">חייב כרגע</span><span class="total">${ils(owed)}</span>
+        <div class="rows">${c.phone ? `<div class="kv"><span>טלפון</span><b class="num">${esc(c.phone)}</b></div>` : ''}${c.address ? `<div class="kv"><span>כתובת</span><b>${esc(c.address)}</b></div>` : ''}${c.email ? `<div class="kv"><span>אימייל</span><b class="num">${esc(c.email)}</b></div>` : ''}${c.notes ? `<div class="kv"><span>הערות</span><b>${esc(c.notes)}</b></div>` : ''}</div>
+        ${c.phone ? `<div class="btns full"><a class="btn good" href="${esc(waLink(c.phone, `שלום ${c.name}, `))}" target="_blank" rel="noopener">${ic('wa')} וואטסאפ</a><button class="btn" data-act="copyText" data-text="${esc(c.phone)}">${ic('copy')} העתקת מספר</button></div>` : ''}</div>
+      ${debts.length ? `<div class="section-title"><h2>חובות</h2></div><div class="card"><div class="rows">${debts.map(debtRow).join('')}</div></div>` : ''}
+      ${quotes.length ? `<div class="section-title"><h2>הצעות</h2></div><div class="card"><div class="rows">${quotes.map(quoteRow).join('')}</div></div>` : ''}
+      ${jobs.length ? `<div class="section-title"><h2>עבודות</h2></div><div class="card"><div class="rows">${jobs.map(jobRow).join('')}</div></div>` : ''}
+      <div class="btns full"><button class="btn" data-sheet="clientForm" data-id="${c.id}">עריכה</button><button class="btn bad" data-act="delClient" data-id="${c.id}">מחיקה</button></div>`);
+  },
+  clientForm(id) {
+    const c = db.clients.find((x) => x.id === id) || {};
+    return sheetFrame(id ? 'עריכת לקוח' : 'לקוח חדש', `<form class="form" id="clientForm" data-id="${id || ''}">
+      ${field('name', 'שם', c.name, 'text', 'required')}${field('phone', 'טלפון', c.phone, 'tel', 'inputmode="tel" placeholder="050-0000000"')}
+      ${field('address', 'כתובת / עיר', c.address)}${field('email', 'אימייל', c.email, 'email')}${area('notes', 'הערות', c.notes)}
+      <button class="btn pri" type="submit">שמירה</button></form>`);
+  },
+  prices() {
+    const cats = [...new Set(db.prices.map((p) => p.cat))];
+    return sheetFrame('מחירון', `<div class="banner info"><span class="dot"></span><div class="grow">המחיר ליחידה לפני מע"מ. הוא נכנס אוטומטית להצעות חדשות, ואפשר לשנות אותו בכל הצעה.</div></div>
+      <form class="form" id="pricesForm">${cats.map((c) => `<div class="card stack"><h3>${esc(c)}</h3>${db.prices.filter((p) => p.cat === c).map((p) => `<div class="item"><span class="grow"><b>${esc(p.name)}</b><span class="muted small" style="display:block">ל${esc(p.unit)}</span></span><span class="qty"><input aria-label="מחיר ${esc(p.name)}" inputmode="decimal" name="p_${p.id}" value="${esc(p.price)}" placeholder="₪"></span><button type="button" class="x" aria-label="מחיקה" data-act="delPrice" data-id="${p.id}">${ic('x')}</button></div>`).join('')}</div>`).join('')}
+      <button class="btn pri" type="submit">שמירת מחירים</button></form>
+      <div class="card stack"><h3>פריט חדש</h3><form class="form" id="newPrice"><div class="grid2">${field('cat', 'קטגוריה', cats[0] || '', 'text', 'list="cats" required')}${field('unit', 'יחידה', 'יחידה')}</div><datalist id="cats">${cats.map((c) => `<option value="${esc(c)}"></option>`).join('')}</datalist>
+      ${field('name', 'שם הפריט', '', 'text', 'required')}${field('price', 'מחיר', '', 'number', 'inputmode="decimal" min="0"')}<button class="btn" type="submit">${ic('plus')} הוספה למחירון</button></form></div>`);
+  },
+  settings() {
+    const s = S();
+    return sheetFrame('הגדרות', `<form class="form" id="settingsForm">
+      <div class="grid2">${field('vat', 'מע"מ (%)', s.vat, 'number', 'inputmode="decimal" min="0" step="0.1" required')}${field('validity', 'תוקף הצעה (ימי עסקים)', s.validity, 'number', 'inputmode="numeric" min="1" required')}</div>
+      <div class="grid2">${field('terms', 'ימים לתשלום', s.terms, 'number', 'inputmode="numeric" min="0" required')}${field('follow', 'מעקב אחרי (ימים)', s.follow, 'number', 'inputmode="numeric" min="1" required')}</div>
+      ${field('lastQuote', 'מספר הצעה אחרון שהונפק', s.lastQuote, 'number', 'inputmode="numeric" required')}
+      <span class="muted small">ימי עסקים נספרים ראשון עד חמישי. חגים לא מנוכים.</span>
+      <button class="btn pri" type="submit">שמירה</button></form>`);
+  },
+  backup() {
+    return sheetFrame('גיבוי ושחזור', `
+      <div class="card stack"><h3>גיבוי</h3><span class="muted">הגיבוי יוצא מהטלפון לדרייב או למייל, ושם תבנית של 9 נקודות קלה מדי לפריצה. לכן הוא מוצפן בסיסמת גיבוי נפרדת, ארוכה. רשום אותה במקום בטוח.</span>
+        <div class="field"><label for="f-bpw">סיסמת גיבוי</label><input id="f-bpw" type="password" autocomplete="new-password" minlength="8"><span class="hint">לפחות 8 תווים. אותה סיסמה בכל גיבוי, כדי שלא תתבלבל.</span></div>
+        <div class="err" id="berr"></div>
+        <div class="btns full"><button class="btn pri" data-act="exportFile">שמירת קובץ גיבוי</button><button class="btn" data-act="exportText">${ic('copy')} העתקה כטקסט</button></div>
+        <textarea class="out" id="backupOut" hidden readonly aria-label="טקסט הגיבוי"></textarea></div>
+      <div class="card stack"><h3>שחזור</h3><span class="muted">שחזור מחליף את כל הנתונים במכשיר בנתונים מהגיבוי. התבנית הנוכחית נשארת.</span>
+        <div class="field"><label for="f-file">קובץ גיבוי</label><input id="f-file" type="file" accept=".json,.txt,application/json,text/plain"></div>
+        <div class="field"><label for="f-paste">או הדבקת טקסט הגיבוי</label><textarea id="f-paste"></textarea></div>
+        <div class="field"><label for="f-rpw">סיסמת הגיבוי</label><input id="f-rpw" type="password" autocomplete="off"></div>
+        <div class="err" id="rerr"></div><button class="btn" data-act="restore">שחזור</button></div>
+      <div class="card stack"><h3>ייצוא לגוגל שיטס</h3><span class="muted">טבלת גבייה בפורמט CSV, לא מוצפנת. מדביקים בגיליון.</span><button class="btn" data-act="exportCsv">${ic('copy')} העתקת טבלת גבייה</button></div>`);
+  },
+  pattern() {
+    const label = chg.step === 'current' ? 'צייר את התבנית הנוכחית' : chg.step === 'confirm' ? 'צייר שוב את התבנית החדשה' : 'צייר תבנית חדשה';
+    return sheetFrame(MODE === 'pattern' ? 'שינוי תבנית נעילה' : 'מעבר לנעילה בתבנית', `<div class="card stack" style="align-items:center;text-align:center">
+      <div class="pat-step" id="pstep">${label}</div><div class="pattern" id="pad2"></div><div class="err" id="perr" aria-live="polite"></div>
+      <span class="muted small">לפחות 5 נקודות</span></div>
+      <div class="banner info"><span class="dot"></span><div class="grow">קבצי גיבוי לא מושפעים. הם נפתחים בסיסמת הגיבוי.</div></div>`);
+  },
+};
+let draft = null;
+
+/* ---------- render ---------- */
+function render() {
+  if (!db) return renderLock();
+  const late = db.debts.filter((d) => dState(d) === 'late').length;
+  const follow = db.quotes.filter((q) => qState(q) === 'follow').length;
+  const body = { home: viewHome, debts: viewDebts, quotes: viewQuotes, jobs: viewJobs, more: viewMore }[tab]();
+  const navs = [['home', 'בית', 'home', 0], ['debts', 'גבייה', 'coin', late], ['quotes', 'הצעות', 'doc', follow], ['jobs', 'עבודות', 'tool', 0], ['more', 'לקוחות ועוד', 'users', 0]];
+  const y = scrollY;
+  $app.innerHTML = `<header class="topbar"><div class="wrap"><div class="brand">${MARK}<div style="min-width:0"><h1>מרכז שליטה</h1><span class="sub">${demoMode ? 'הדגמה · ' : ''}${COMPANY}</span></div></div><button class="icon-btn" data-act="lock" aria-label="נעילה">${ic('lock')}</button></div></header>
+  <main class="wrap stack">${body}</main>
+  <nav class="nav" aria-label="ניווט"><div class="nav-in">${navs.map(([k, l, i, b]) => `<button data-tab="${k}" ${tab === k ? 'aria-current="page"' : ''}>${ic(i)}<span>${l}</span>${b ? `<span class="badge num">${b}</span>` : ''}</button>`).join('')}</div></nav>
+  ${sheet ? SHEETS[sheet.name](sheet.id) : ''}`;
+  if (sheet) { const sh = $app.querySelector('.sheet'); if (sheet.y) sh.scrollTop = sheet.y; } else scrollTo(0, y);
+  if (sheet?.name === 'pattern') mountChange();
+  document.body.style.overflow = sheet ? 'hidden' : '';
+}
+function openSheet(name, id) { if (name !== 'quoteForm') draft = null; if (name === 'pattern') chg = { step: MODE === 'pattern' ? 'current' : 'new', first: null }; sheet = { name, id, back: sheet }; render(); $app.querySelector('.sheet')?.scrollTo(0, 0); }
+function closeSheet() { sheet = sheet?.back && SHEETS[sheet.back.name](sheet.back.id) ? sheet.back : null; draft = null; render(); }
+function rerenderSheet() { const y = $app.querySelector('.sheet')?.scrollTop || 0; sheet.y = y; render(); sheet.y = 0; }
+function afterSave(msg, go) { save(); toast(msg); if (go) { sheet = go; draft = null; } else closeSheet(); render(); }
+
+function mountChange() {
+  const el = $app.querySelector('#pad2'); if (!el) return;
+  mountPattern(el, async (seq, pad) => {
+    const err = $app.querySelector('#perr'), lab = $app.querySelector('#pstep');
+    if (demoMode) { err.textContent = 'במצב הדגמה אין נעילה.'; pad.flash('bad'); return; }
+    if (chg.step === 'current') {
+      pad.hold('wait'); err.textContent = 'בודק…';
+      try { await open(patKey(seq), store.get(VAULT)); chg.step = 'new'; pad.flash('good', 350); lab.textContent = 'צייר תבנית חדשה'; err.textContent = ''; }
+      catch { pad.flash('bad'); err.textContent = 'זו לא התבנית הנוכחית.'; }
+      return;
+    }
+    if (seq.length < 5) { pad.flash('bad'); err.textContent = `חיברת ${seq.length} נקודות. צריך לפחות 5.`; return; }
+    if (chg.step === 'new') { chg.first = seq.join('-'); chg.step = 'confirm'; pad.flash('good', 350); lab.textContent = 'צייר שוב את התבנית החדשה'; err.textContent = ''; return; }
+    if (seq.join('-') !== chg.first) { chg = { step: 'new', first: null }; pad.flash('bad'); lab.textContent = 'צייר תבנית חדשה'; err.textContent = 'התבניות לא זהות. מתחילים מחדש.'; return; }
+    pad.hold('good'); err.textContent = 'מצפין מחדש…';
+    SALT = crypto.getRandomValues(new Uint8Array(16)); KITER = ITER; MODE = 'pattern'; KEY = await derive(patKey(seq), SALT, KITER); save(); await saving;
+    toast('תבנית הנעילה עודכנה'); closeSheet();
+  });
+}
+
+/* ---------- events ---------- */
+$app.addEventListener('click', async (e) => {
+  const t = e.target.closest('[data-act],[data-tab],[data-open],[data-sheet],[data-filter]'); if (!t) return;
+  if (t.dataset.tab) { tab = t.dataset.tab; sheet = null; render(); scrollTo(0, 0); return; }
+  if (t.dataset.filter) { filter[t.dataset.filter] = t.dataset.v; render(); return; }
+  if (t.dataset.open) { openSheet(t.dataset.open, t.dataset.id); return; }
+  if (t.dataset.sheet) { openSheet(t.dataset.sheet, t.dataset.id || ''); return; }
+  const a = t.dataset.act, id = t.dataset.id;
+  const Q = () => db.quotes.find((x) => x.id === id), D = () => db.debts.find((x) => x.id === id), J = () => db.jobs.find((x) => x.id === id);
+  switch (a) {
+    case 'demo': db = demo(); demoMode = true; KEY = null; tab = 'home'; sheet = null; render(); break;
+    case 'lock': lock(); break;
+    case 'patRestart': lockState.first = null; renderLock(); break;
+    case 'close': closeSheet(); break;
+    case 'copyText': copy(t.dataset.text); break;
+    case 'copyQuote': copy(quoteText(Q())); break;
+    case 'qStatus': { const q = Q(); q.status = t.dataset.v; if (q.status === 'sent' && !q.sentDate) q.sentDate = today(); save(); rerenderSheet(); toast(`ההצעה סומנה: ${Q_ST[q.status][0]}`); break; }
+    case 'jStatus': { const j = J(); j.status = t.dataset.v; if (j.status === 'done' && !j.end) j.end = today(); if (j.status === 'active' && !j.start) j.start = today(); save(); rerenderSheet(); break; }
+    case 'toJob': { const q = Q(); const j = { id: uid(), no: nextJobNo(), quoteId: q.id, client: q.client, location: q.location, status: 'planned', start: '', end: '', amount: qSub(q), billed: false, notes: '' }; db.jobs.push(j); afterSave('נפתחה עבודה', { name: 'job', id: j.id }); break; }
+    case 'bill': { const j = J(); const d = { id: uid(), no: '', date: today(), client: j.client, for: `עבודה ${j.no}${j.location ? `, ${j.location}` : ''}`, amount: Math.round(num(j.amount) * (1 + vatRate())), terms: S().terms, payments: [], notes: '', jobId: j.id }; db.debts.push(d); j.billed = true; afterSave('נרשם חוב בגבייה', { name: 'debt', id: d.id }); break; }
+    case 'dupQuote': { const q = JSON.parse(JSON.stringify(Q())); Object.assign(q, { id: uid(), no: nextQuoteNo(), date: today(), status: 'draft', sentDate: '', docUrl: '' }); db.quotes.push(q); afterSave(`נוצרה הצעה ${q.no}`, { name: 'quoteForm', id: q.id }); break; }
+    case 'delQuote': ask('מחיקת הצעה', 'ההצעה תימחק לגמרי.', 'מחיקה', 'bad', () => { db.quotes = db.quotes.filter((x) => x.id !== id); sheet = null; save(); render(); toast('נמחק'); }); break;
+    case 'delDebt': ask('מחיקת חוב', 'החוב וכל התשלומים שלו יימחקו.', 'מחיקה', 'bad', () => { db.debts = db.debts.filter((x) => x.id !== id); sheet = null; save(); render(); toast('נמחק'); }); break;
+    case 'delJob': ask('מחיקת עבודה', 'העבודה תימחק. חוב שכבר נרשם בגבייה נשאר.', 'מחיקה', 'bad', () => { db.jobs = db.jobs.filter((x) => x.id !== id); sheet = null; save(); render(); toast('נמחק'); }); break;
+    case 'delClient': ask('מחיקת לקוח', 'הכרטיס יימחק. הצעות וחובות על שמו נשארים.', 'מחיקה', 'bad', () => { db.clients = db.clients.filter((x) => x.id !== id); sheet = null; save(); render(); toast('נמחק'); }); break;
+    case 'delPay': { const d = D(); d.payments.splice(Number(t.dataset.i), 1); save(); rerenderSheet(); toast('התשלום נמחק'); break; }
+    case 'delPrice': ask('מחיקת פריט', 'הפריט יוסר מהמחירון. הצעות קיימות לא משתנות.', 'מחיקה', 'bad', () => { db.prices = db.prices.filter((x) => x.id !== id); save(); rerenderSheet(); }); break;
+    case 'rmItem': syncDraft(); draft.items.splice(Number(t.dataset.i), 1); rerenderSheet(); break;
+    case 'addItem': {
+      syncDraft();
+      const pick = $app.querySelector('#f-pick').value, ar = $app.querySelector('#f-area').value.trim();
+      if (!pick) { toast('בחר פריט מהמחירון'); break; }
+      if (pick === '__free') {
+        const name = $app.querySelector('#f-fname').value.trim(); if (!name) { toast('כתוב תיאור לפריט'); break; }
+        draft.items.push({ area: ar, name, qty: 1, unit: 'יח\'', price: num($app.querySelector('#f-fprice').value) });
+      } else { const p = db.prices.find((x) => x.id === pick); draft.items.push({ area: ar, name: p.name, qty: 1, unit: p.unit, price: num(p.price) }); }
+      rerenderSheet(); break;
+    }
+    case 'exportFile': case 'exportText': {
+      if (demoMode) { toast('במצב הדגמה אין מה לגבות'); break; }
+      const bpw = $app.querySelector('#f-bpw').value, berr = $app.querySelector('#berr');
+      if (bpw.length < 8) { berr.textContent = 'סיסמת הגיבוי צריכה לפחות 8 תווים.'; break; }
+      berr.textContent = 'מצפין…'; S().backupAt = today();
+      const bsalt = crypto.getRandomValues(new Uint8Array(16));
+      const blob = await seal(await derive(bpw, bsalt, ITER), bsalt, db, 'backup', ITER); berr.textContent = '';
+      const name = `gp-backup-${today()}.json`;
+      if (a === 'exportFile') {
+        try { const url = URL.createObjectURL(new Blob([blob], { type: 'application/json' })); const l = document.createElement('a'); l.href = url; l.download = name; document.body.append(l); l.click(); l.remove(); setTimeout(() => URL.revokeObjectURL(url), 4000); } catch {}
+        const out = $app.querySelector('#backupOut'); out.hidden = false; out.value = blob;
+      } else { const ok = await copy(blob); if (!ok) { const out = $app.querySelector('#backupOut'); out.hidden = false; out.value = blob; out.select(); } }
+      save(); toast(a === 'exportFile' ? 'קובץ הגיבוי נשמר בהורדות. אם לא, העתק את הטקסט' : 'טקסט הגיבוי הועתק'); break;
+    }
+    case 'restore': {
+      const err = $app.querySelector('#rerr'), f = $app.querySelector('#f-file').files[0];
+      const text = f ? await f.text() : $app.querySelector('#f-paste').value.trim(), pw = $app.querySelector('#f-rpw').value;
+      if (demoMode) { err.textContent = 'במצב הדגמה אי אפשר לשחזר.'; break; }
+      if (!text || !pw) { err.textContent = 'צריך קובץ או טקסט גיבוי, וגם את סיסמת הגיבוי.'; break; }
+      try {
+        const r = await open(pw, text);
+        ask('שחזור מגיבוי', 'כל הנתונים במכשיר יוחלפו בנתוני הגיבוי. התבנית הנוכחית נשארת.', 'שחזור', 'pri', () => { db = r.data; save(); sheet = null; tab = 'home'; render(); toast('הנתונים שוחזרו'); });
+      } catch { err.textContent = 'לא הצלחתי לפתוח את הגיבוי. בדוק את הסיסמה ואת הטקסט.'; }
+      break;
+    }
+    case 'exportCsv': {
+      const rows = [['מס\'', 'תאריך', 'לקוח', 'עבור', 'סכום כולל מע"מ', 'שולם', 'יתרה', 'תאריך יעד', 'סטטוס']].concat(db.debts.map((d) => [d.no, fmtD(d.date), d.client, d.for, d.amount, dPaid(d), dBal(d), fmtD(dDue(d)), D_ST[dState(d)][0]]));
+      copy(rows.map((r) => r.map((v) => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\n')); break;
+    }
+  }
+});
+function syncDraft() {
+  const f = $app.querySelector('#quoteForm'); if (!f || !draft) return;
+  const v = formData(f);
+  Object.assign(draft, { no: v.no, date: v.date, client: v.client, location: v.location, status: v.status, docUrl: v.docUrl, notes: v.notes });
+  draft.supply = { materials: v.s_materials, lighting: v.s_lighting, accessories: v.s_accessories };
+  f.querySelectorAll('[data-qty]').forEach((inp) => { draft.items[Number(inp.dataset.qty)].qty = num(inp.value) || 1; });
+}
+$app.addEventListener('change', (e) => {
+  if (e.target.id === 'f-pick') { const free = e.target.value === '__free'; $app.querySelector('#freeRow').hidden = !free; }
+});
+$app.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const f = e.target, v = formData(f), id = f.dataset.id;
+  switch (f.id) {
+    case 'unlock': return onUnlock(e);
+    case 'payForm': { const d = db.debts.find((x) => x.id === sheet.id); if (num(v.amount) <= 0) return toast('הסכום צריך להיות גדול מאפס'); d.payments.push({ date: v.date, amount: num(v.amount) }); save(); rerenderSheet(); toast(dState(d) === 'paid' ? 'החוב סגור' : `נשארה יתרה של ${ilsTxt(dBal(d))} ₪`); break; }
+    case 'debtForm': {
+      const name = ensureClient(v.client, v.phone);
+      const d = id ? db.debts.find((x) => x.id === id) : { id: uid(), payments: [] };
+      Object.assign(d, { client: name, for: v.for, amount: num(v.amount), no: v.no, date: v.date, terms: v.terms === '' ? S().terms : num(v.terms), notes: v.notes });
+      if (!id) db.debts.push(d);
+      afterSave(id ? 'החוב עודכן' : 'החוב נרשם', { name: 'debt', id: d.id, back: null }); break;
+    }
+    case 'quoteForm': {
+      syncDraft();
+      if (!draft.items.length) return toast('צריך לפחות פריט אחד בתיאור העבודה');
+      const s = draft.supply; if (!s.materials || !s.lighting || !s.accessories) return toast('צריך לבחור מי מספק חומרים, גופי תאורה ואביזרים');
+      const no = num(draft.no);
+      if (db.quotes.some((q) => num(q.no) === no && q.id !== id)) return toast(`כבר יש הצעה מספר ${no}`);
+      draft.client = ensureClient(draft.client);
+      const q = id ? db.quotes.find((x) => x.id === id) : { id: uid() };
+      const { _for, ...clean } = draft; Object.assign(q, clean, { id: q.id, no });
+      if (q.status === 'sent' && !q.sentDate) q.sentDate = today();
+      if (!id) db.quotes.push(q);
+      if (no > num(S().lastQuote)) S().lastQuote = no;
+      afterSave(id ? 'ההצעה עודכנה' : `הצעה ${no} נשמרה`, { name: 'quote', id: q.id, back: null }); break;
+    }
+    case 'jobForm': {
+      const name = ensureClient(v.client);
+      const j = id ? db.jobs.find((x) => x.id === id) : { id: uid(), no: nextJobNo(), billed: false };
+      Object.assign(j, { client: name, location: v.location, amount: num(v.amount), status: v.status, start: v.start, end: v.end, notes: v.notes });
+      if (!id) db.jobs.push(j);
+      afterSave(id ? 'העבודה עודכנה' : 'העבודה נרשמה', { name: 'job', id: j.id, back: null }); break;
+    }
+    case 'clientForm': {
+      const name = v.name.trim(); if (!name) return;
+      const c = id ? db.clients.find((x) => x.id === id) : { id: uid() };
+      if (db.clients.some((x) => x.name === name && x.id !== c.id)) return toast('כבר יש לקוח בשם הזה');
+      const old = c.name;
+      Object.assign(c, { name, phone: v.phone, address: v.address, email: v.email, notes: v.notes });
+      if (old && old !== name) [db.debts, db.quotes, db.jobs].forEach((arr) => arr.forEach((x) => { if (x.client === old) x.client = name; }));
+      if (!id) db.clients.push(c);
+      afterSave('הלקוח נשמר', { name: 'client', id: c.id, back: null }); break;
+    }
+    case 'pricesForm': db.prices.forEach((p) => { const val = v['p_' + p.id]; if (val !== undefined) p.price = val === '' ? '' : num(val); }); save(); toast('המחירון נשמר'); closeSheet(); break;
+    case 'newPrice': db.prices.push({ id: uid(), cat: v.cat.trim(), name: v.name.trim(), unit: v.unit.trim() || 'יחידה', price: v.price === '' ? '' : num(v.price) }); save(); rerenderSheet(); toast('נוסף למחירון'); break;
+    case 'settingsForm': Object.assign(S(), { vat: num(v.vat), validity: num(v.validity), terms: num(v.terms), follow: num(v.follow), lastQuote: num(v.lastQuote) }); afterSave('ההגדרות נשמרו'); break;
+  }
+});
+
+/* ---------- auto lock ---------- */
+let idle, hiddenAt = 0;
+const IDLE_MS = 5 * 60 * 1000;
+const bump = () => { clearTimeout(idle); if (db) idle = setTimeout(() => db && lock(), IDLE_MS); };
+['pointerdown', 'keydown', 'scroll'].forEach((ev) => addEventListener(ev, bump, { passive: true }));
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) hiddenAt = Date.now();
+  else if (db && hiddenAt && Date.now() - hiddenAt > 2 * 60 * 1000) lock();
+});
+addEventListener('keydown', (e) => { if (e.key === 'Escape' && document.querySelector('.scrim')) document.querySelector('.scrim').remove(); else if (e.key === 'Escape' && sheet) closeSheet(); });
+
+renderLock();
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+})();
+</script>
+
+</body>
+</html>
