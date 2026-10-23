@@ -286,7 +286,7 @@ button.chip { cursor: pointer; font: inherit; font-size: 13.5px; padding: 6px 10
 <script>
 (() => {
 'use strict';
-const COMPANY = 'גרינפלסטש הנדסה', PHONE = '0523180299', APP_VERSION = 7;
+const COMPANY = 'גרינפלסטש הנדסה', PHONE = '0523180299', APP_VERSION = 9;
 const VAULT = 'gp.vault.v1', META = 'gp.meta.v1';
 const $app = document.getElementById('app');
 
@@ -798,7 +798,7 @@ function viewQuotes() {
   const by = { active: all.filter((q) => q.status === 'draft' || (q.status === 'sent' && qState(q) !== 'expired')), follow: all.filter((q) => qState(q) === 'follow'), approved: all.filter((q) => q.status === 'approved'), all };
   const list = by[filter.quotes];
   return `<div class="section-title"><h2>הצעות מחיר</h2><span class="muted small">הבאה: <span class="num mono">${nextQuoteNo()}</span></span></div>
-  <button type="button" class="voice-cta" data-sheet="voice">${ic('mic')}<span class="grow"><b>הקלטת הצעה חדשה</b><span class="muted small">מדברים ברצף, והאפליקציה ממלאת את ההצעה</span></span></button>
+  <button type="button" class="voice-cta" data-sheet="voice">${ic('mic')}<span class="grow"><b>הקלטה, הדבקה או PDF</b><span class="muted small">דיבור ברצף, הצעה מוכנה, או קובץ PDF שיש לך</span></span></button>
   ${filters('quotes', [['active', 'פתוחות', by.active.length], ['follow', 'לחזור ללקוח', by.follow.length], ['approved', 'אושרו', by.approved.length], ['all', 'הכל', all.length]])}
   <div class="card">${list.length ? `<div class="rows">${list.map(quoteRow).join('')}</div>` : `<div class="empty"><b>אין הצעות ברשימה הזו</b><span>הצעה חדשה נבנית מהמחירון ומפיקה טקסט מוכן לוואטסאפ.</span></div>`}</div>
   <button class="fab" data-sheet="quoteForm">${ic('plus')} הצעה חדשה</button>`;
@@ -947,6 +947,115 @@ function startRec() {
   updRecUI();
 }
 function stopRec() { recOn = false; try { rec?.stop(); } catch {} updRecUI(); }
+/* ---------- paste: a finished quote text (the WhatsApp version Claude writes) back into fields ---------- */
+const WORK_RE = /^(תיאור|פירוט|תכולת|מהות)(\s|:|$)|^העבודה\s*:?$/;
+const looksLikeQuote = (t) => /לכבוד/.test(t) && t.split('\n').some((l) => WORK_RE.test(l.replace(/[*_#]/g, '').trim()));
+function parseQuoteText(text) {
+  const lines = String(text).replace(/\r/g, '').split('\n').map((l) => l.trim().replace(/\*\*|__/g, '').replace(/^#+\s*/, '').replace(/^\*\s*/, '- ').trim());
+  const out = { no: '', date: '', client: '', location: '', areas: [], items: [], supply: {}, total: '', notes: [] };
+  const FIXED = [/אינו כולל מע"?מ/, /תוקף ההצעה/, /תקפה ל/];
+  let sec = 'head', area = '', pendingArea = '', lastNote = null;
+  const val = (l) => l.slice(l.indexOf(':') + 1).trim();
+  const supKey = (l) => (/^-?\s*חומרים/.test(l) ? 'materials' : /^-?\s*גופי תאורה/.test(l) ? 'lighting' : /^-?\s*אביזרים/.test(l) ? 'accessories' : '');
+  const toDate = (s) => { const m = s.match(/(\d{1,2})[./-](\d{1,2})[./-](\d{2,4})/); if (!m) return ''; const y = m[3].length === 2 ? '20' + m[3] : m[3]; return `${y}-${pad(m[2])}-${pad(m[1])}`; };
+  const addItem = (name) => { const a = area || 'כללי'; if (!out.areas.includes(a)) out.areas.push(a); out.items.push({ area: a, name, qty: 1, unit: '', price: 0 }); };
+  for (const l of lines) {
+    if (!l) { if (sec === 'work' && pendingArea) { addItem(pendingArea); pendingArea = ''; } continue; }
+    if (/^בברכה/.test(l)) break;
+    if (/^הצעת מחיר/.test(l)) { const m = l.match(/(\d{3,})/); if (m) out.no = m[1]; continue; }
+    if (/^תאריך\s*:/.test(l)) { out.date = toDate(val(l)); continue; }
+    if (/^לכבוד\s*:/.test(l)) { out.client = val(l); continue; }
+    if (/^(מיקום|מיקום העבודה|כתובת)\s*:/.test(l)) { out.location = val(l); continue; }
+    if (WORK_RE.test(l)) { sec = 'work'; continue; }
+    if (/^(נושא|שם חברה|טלפון|קבלן מבצע)\s*:/.test(l)) continue;
+    if (/^אספקה/.test(l)) { if (pendingArea) { addItem(pendingArea); pendingArea = ''; } sec = 'supply'; continue; }
+    if (/^(מחיר|סה"כ|עלות|סכום העבודה)/.test(l)) { if (pendingArea) { addItem(pendingArea); pendingArea = ''; } sec = 'price'; const n = val(l).replace(/,/g, '').match(/\d+(\.\d+)?/); if (n) out.total = n[0]; continue; }
+    if (/^הערות/.test(l)) { sec = 'notes'; continue; }
+    if (sec === 'work') {
+      if (/^[-•*◦●▪]/.test(l)) { if (pendingArea) { area = pendingArea; pendingArea = ''; } addItem(l.replace(/^[-•*◦●▪]\s*/, '')); }
+      else if (/:$/.test(l)) { if (pendingArea) addItem(pendingArea); pendingArea = ''; area = l.replace(/:$/, '').trim(); }
+      else { if (pendingArea) addItem(pendingArea); pendingArea = l; }
+    } else if (sec === 'supply') {
+      const k = supKey(l); if (k) out.supply[k] = val(l); else out.notes.push(l.replace(/^[-•]\s*/, ''));
+    } else if (sec === 'price') {
+      if (!out.total) { const n = l.replace(/,/g, '').match(/\d+(\.\d+)?/); if (n) out.total = n[0]; }
+    } else if (sec === 'notes') {
+      const bullet = /^[-•*◦●▪]/.test(l), t = l.replace(/^[-•*◦●▪]\s*/, '');
+      if (!bullet && lastNote != null) { if (lastNote >= 0) out.notes[lastNote] += ' ' + t; continue; }
+      if (FIXED.some((r) => r.test(t))) { lastNote = -1; continue; }
+      out.notes.push(t); lastNote = out.notes.length - 1;
+    }
+  }
+  // older quotes keep supply inside the notes
+  const allNotes = out.notes.join(' ');
+  if (!out.supply.materials && /כולל[^.]*(חומרים|אביזרים)/.test(allNotes) && !/אינו כולל[^.]*(חומרים|אביזרים)/.test(allNotes)) { out.supply.materials = COMPANY; out.supply.accessories = out.supply.accessories || COMPANY; }
+  if (!out.supply.lighting && /(אינו כולל[^.]*גופי (ה)?תאורה|גופי (ה)?תאורה[^.]*(יסופקו|בעל הבית|המזמין|הלקוח))/.test(allNotes)) out.supply.lighting = 'הלקוח';
+  return out;
+}
+
+/* join pdf.js text items into lines, adding spaces where the words are apart and fixing mirrored brackets in RTL lines */
+function pdfLines(items) {
+  const lines = []; let cur = [];
+  const flush = () => {
+    if (!cur.length) return;
+    let s = '';
+    cur.forEach((it, i) => {
+      if (i) {
+        const p = cur[i - 1], h = Math.abs(it.transform[3]) || Math.abs(p.transform[3]) || 10;
+        const px = p.transform[4], cx = it.transform[4];
+        const gap = Math.min(Math.abs(px - (cx + it.width)), Math.abs(cx - (px + p.width)));
+        if (gap > h * 0.12 && !/\s$/.test(s) && !/^\s/.test(it.str)) s += ' ';
+      }
+      s += it.str;
+    });
+    if (/[֐-׿]/.test(s)) s = s.replace(/[()]/g, (c) => (c === '(' ? ')' : '('));
+    lines.push(s.replace(/\s+/g, ' ').trim()); cur = [];
+  };
+  for (const it of items) { if (it.str) cur.push(it); if (it.hasEOL) flush(); }
+  flush();
+  return lines.filter(Boolean);
+}
+
+const PDFJS = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/';
+let pdfjsLib = null;
+async function loadPdfjs() {
+  if (pdfjsLib) return pdfjsLib;
+  const [lib, worker] = await Promise.all([import(PDFJS + 'pdf.min.mjs'), import(PDFJS + 'pdf.worker.min.mjs')]);
+  globalThis.pdfjsWorker = worker; lib.GlobalWorkerOptions.workerSrc = PDFJS + 'pdf.worker.min.mjs';
+  return (pdfjsLib = lib);
+}
+async function pdfToText(file) {
+  const lib = await loadPdfjs();
+  const doc = await lib.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
+  const out = [];
+  for (let i = 1; i <= doc.numPages; i++) out.push(...pdfLines((await (await doc.getPage(i)).getTextContent()).items));
+  return out.join('\n');
+}
+async function importFile(file) {
+  if (!file) return;
+  if (/^image\//.test(file.type)) { toast('צילום עוד לא נקרא כאן. שלח אותו ל־Claude והדבק את ההצעה שחוזרת'); return; }
+  if (file.type !== 'application/pdf' && !/\.pdf$/i.test(file.name)) { toast('אפשר לבחור כאן רק קובץ PDF'); return; }
+  toast('קורא את ה־PDF…');
+  let text = '';
+  try { text = await pdfToText(file); } catch { toast('לא הצלחתי לפתוח את הקובץ. צריך חיבור לאינטרנט בפעם הראשונה'); return; }
+  if (text.replace(/\s/g, '').length < 20) { toast('ב־PDF הזה אין טקסט, הוא סרוק כתמונה. שלח אותו ל־Claude'); return; }
+  const ta = $app.querySelector('#v-text'); if (ta) ta.value = text;
+  voiceText = '';
+  if (looksLikeQuote(text)) applyQuoteText(text); else applyVoice(text);
+}
+function applyQuoteText(text) {
+  const r = parseQuoteText(text);
+  draft = newDraft('');
+  const known = r.client && db.clients.find((c) => c.name === r.client || c.name.includes(r.client) || r.client.includes(c.name));
+  const noFree = r.no && !db.quotes.some((q) => num(q.no) === num(r.no));
+  Object.assign(draft, { client: known ? known.name : r.client, location: r.location, areas: r.areas, items: r.items, total: r.total, extraNotes: r.notes.join('\n'), notes: 'יובא מטקסט של הצעה' });
+  if (noFree) draft.no = num(r.no);
+  if (r.date) draft.date = r.date;
+  Object.assign(draft.supply, r.supply);
+  const filled = [r.client && 'לקוח', r.location && 'מיקום', r.items.length && `${r.items.length} שורות`, Object.keys(r.supply).length && 'אספקה', r.total && 'מחיר'].filter(Boolean);
+  wiz = 4; sheet = { name: 'quoteForm', id: '', back: null }; render(); $app.querySelector('.sheet')?.scrollTo(0, 0);
+  toast(filled.length ? `יובאו: ${filled.join(', ')}` : 'לא זיהיתי הצעה בטקסט');
+}
 function applyVoice(text) {
   const r = parseSpoken(text);
   draft = newDraft('');
@@ -1057,11 +1166,18 @@ const SHEETS = {
   },
   voice() {
     const kws = [['לקוח', 'שם הלקוח. אם מתחילים בשם, גם בלי המילה'], ['טלפון', 'המספר, גם בהפסקות'], ['מיקום', 'או כתובת'], ['אזור', 'פותח אזור או סוג עבודה'], ['שורה', 'כל שורה בתיאור העבודה. גם תיאור'], ['חומרים', 'ואחריו עלינו, על הלקוח או לא רלוונטי'], ['גופי תאורה', 'אותו דבר'], ['אביזרים', 'אותו דבר. או אספקה הכל עלינו'], ['מחיר', 'הסכום לפני מע"מ. גם 9 אלף'], ['הערה', 'הערה נוספת להצעה']];
-    return sheetFrame('הקלטת הצעה', `
-      <div class="card stack"><div class="wiz-q">מדברים ברצף, והאפליקציה משבצת</div>
+    return sheetFrame('הקלטה, הדבקה או PDF', `
+      <div class="card stack"><div class="wiz-q">מדברים ברצף, או מדביקים הצעה מוכנה</div>
         <div class="rec-wrap"><button type="button" id="v-rec" class="rec" data-act="recToggle" aria-pressed="false">${ic('mic')}<span class="l">התחלת הקלטה</span></button><span id="v-state" class="muted small" aria-live="polite"></span></div>
         <div class="field"><label for="v-text">מה נקלט</label><textarea id="v-text" rows="7" placeholder="הדיבור יופיע כאן. אפשר גם להקליד, לתקן או להדביק">${esc(voiceText)}</textarea><span class="hint">אפשר לתקן כאן מילים שנקלטו לא נכון לפני השיבוץ</span></div>
+        <div class="btns full"><button type="button" class="btn" data-act="pasteText">${ic('copy')} הדבקה</button><button type="button" class="btn" data-act="pickPdf">${ic('doc')} בחירת PDF</button></div>
+        <input type="file" id="v-file" accept="application/pdf,.pdf" hidden>
         <button type="button" class="btn pri" data-act="voiceApply">שיבוץ בהצעה</button></div>
+      <div class="card stack"><h3>PDF שכבר יש לך</h3><span class="muted">"בחירת PDF" קורא את הקובץ בטלפון עצמו וממלא את ההצעה. עובד עם PDF שיש בו טקסט, כמו הצעה שיצאה מגוגל דוקס. PDF סרוק או צילום של דף שולחים ל־Claude.</span></div>
+      <div class="card stack"><h3>מכתב יד, צילום או PDF</h3><ol style="margin:0;padding-inline-start:20px;display:flex;flex-direction:column;gap:6px">
+        <li>שולחים את הצילום או הקובץ ל־Claude וכותבים "הצעת מחיר".</li>
+        <li>מעתיקים את נוסח ההצעה ש־Claude מחזיר, הנוסח לוואטסאפ.</li>
+        <li>לוחצים כאן "הדבקה" ואז "שיבוץ בהצעה". כל השדות מתמלאים, ובודקים בסיכום.</li></ol></div>
       <div class="card stack"><h3>מילות המפתח</h3><div>${kws.map(([k, d]) => `<div class="kw"><b>${k}</b><span class="muted">${d}</span></div>`).join('')}</div></div>
       <div class="card stack"><h3>דוגמה</h3><p class="muted" style="margin:0">לקוח וילה וגאס, טלפון 050 1234567, מיקום נוף כינרת. אזור לוח חשמל, שורה החלפת לוח ראשי, שורה הוספת 4 מאמ"תים. אזור מטבח, שורה 6 נקודות שקע. חומרים עלינו, גופי תאורה על הלקוח, אביזרים עלינו. מחיר 9800. הערה כולל פירוק הלוח הישן.</p></div>`);
   },
@@ -1073,7 +1189,7 @@ const SHEETS = {
     let body = '';
     if (wiz === 0) {
       const c = client(q.client);
-      body = `${id ? '' : `<button type="button" class="voice-cta" data-sheet="voice">${ic('mic')}<span class="grow"><b>הקלטה רציפה של כל ההצעה</b><span class="muted small">מדברים פעם אחת, והשדות מתמלאים לבד</span></span></button>`}<div class="wiz-q">למי ההצעה, ואיפה העבודה?</div>${clientList()}
+      body = `${id ? '' : `<button type="button" class="voice-cta" data-sheet="voice">${ic('mic')}<span class="grow"><b>הקלטה או הדבקה של כל ההצעה</b><span class="muted small">דיבור ברצף, או הצעה מוכנה מ־Claude</span></span></button>`}<div class="wiz-q">למי ההצעה, ואיפה העבודה?</div>${clientList()}
         <div class="card stack">
           <div class="grid2">${inp('no', 'מס\' הצעה', q.no, 'number', 'inputmode="numeric"')}${inp('date', 'תאריך', q.date, 'date')}</div>
           ${inp('client', 'לכבוד', q.client, 'text', 'list="clients" autocomplete="off" placeholder="שם הלקוח"', 'לקוח קיים מופיע ברשימה כשמתחילים להקליד')}
@@ -1340,7 +1456,9 @@ $app.addEventListener('click', async (e) => {
       toast('ה־PDF נשמר בהורדות'); break;
     }
     case 'recToggle': if (recOn) stopRec(); else startRec(); break;
-    case 'voiceApply': { stopRec(); const text = ($app.querySelector('#v-text')?.value || '').trim(); if (!text) { toast('אין עדיין טקסט. הקלט או הקלד'); break; } voiceText = ''; applyVoice(text); break; }
+    case 'voiceApply': { stopRec(); const text = ($app.querySelector('#v-text')?.value || '').trim(); if (!text) { toast('אין עדיין טקסט. הקלט, הקלד או הדבק'); break; } voiceText = ''; if (looksLikeQuote(text)) applyQuoteText(text); else applyVoice(text); break; }
+    case 'pickPdf': $app.querySelector('#v-file')?.click(); break;
+    case 'pasteText': { try { const tx = await navigator.clipboard.readText(); if (!tx) { toast('הלוח ריק'); break; } const ta = $app.querySelector('#v-text'); ta.value = tx; voiceText = tx; toast('הודבק. עכשיו שיבוץ בהצעה'); } catch { toast('לחיצה ארוכה בתיבה ואז הדבק'); $app.querySelector('#v-text')?.focus(); } break; }
     case 'wizPrev': syncDraft(); wizShow(wiz - 1); break;
     case 'wizNext': {
       syncDraft(); const m = wizMissing(wiz);
@@ -1418,6 +1536,7 @@ function syncDraft() {
   $app.querySelectorAll('.sheet [data-qty]').forEach((inp) => { const it = draft.items[Number(inp.dataset.qty)]; if (!it) return; it.qty = num(inp.value) || 1; const pr = it.pid && db.prices.find((x) => x.id === it.pid); if (pr && hasP(pr.min)) it.price = unitPrice(pr, it.qty); });
 }
 $app.addEventListener('change', (e) => {
+  if (e.target.id === 'v-file') { const f = e.target.files && e.target.files[0]; e.target.value = ''; importFile(f); return; }
   const pick = e.target.closest('select[data-pick]');
   if (pick && pick.value) {
     syncDraft(); const p = db.prices.find((x) => x.id === pick.value), ai = Number(pick.dataset.pick);
