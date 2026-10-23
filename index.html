@@ -133,7 +133,7 @@ main { padding-block: 14px calc(var(--nav-h) + env(safe-area-inset-bottom, 0px) 
 /* bottom nav */
 .nav { position: fixed; inset-inline: 0; bottom: 0; z-index: 30; background: var(--surface); border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom, 0px); padding-left: env(safe-area-inset-left, 0px); padding-right: env(safe-area-inset-right, 0px); }
 .nav-in { max-width: 680px; margin: 0 auto; display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; height: var(--nav-h); }
-.nav button { border: 0; background: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; font-size: 12.5px; color: var(--muted); cursor: pointer; position: relative; }
+.nav button { border: 0; background: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; font-size: 12px; min-width: 0; white-space: nowrap; color: var(--muted); cursor: pointer; position: relative; }
 .nav button svg { width: 23px; height: 23px; }
 .nav button[aria-current="page"] { color: var(--accent); font-weight: 700; }
 .nav .badge { position: absolute; top: 8px; inset-inline-end: calc(50% - 22px); min-width: 17px; height: 17px; border-radius: 9px; background: var(--bad); color: var(--surface); font-size: 11px; font-weight: 700; display: grid; place-items: center; padding: 0 4px; }
@@ -188,6 +188,34 @@ textarea.out { width: 100%; min-height: 180px; border: 1px solid var(--line); bo
 @keyframes live { 50% { opacity: .3; } }
 @media (prefers-reduced-motion: reduce) { .scope .trace, .scope .live { animation: none; } }
 .lock h1 { font: 28px/1.15 var(--font-display); }
+/* price list */
+.pl-tools { display: flex; gap: 8px; }
+.pl-tools input { flex: 1; min-width: 0; border: 1px solid var(--line); background: var(--surface); border-radius: 10px; padding: 10px 12px; font-size: 16px; }
+.pl-cat { padding: 0; overflow: hidden; }
+.pl-head { display: flex; align-items: center; gap: 8px; padding: 12px 14px; }
+.pl-toggle { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; border: 0; background: none; text-align: start; cursor: pointer; padding: 0; color: var(--ink); }
+.pl-toggle h3 { font: 17px/1.3 var(--font-display); }
+.pl-toggle svg { width: 18px; height: 18px; color: var(--muted); transition: transform .15s; flex: none; }
+.pl-cat.closed .pl-toggle svg { transform: rotate(90deg); }
+.pl-add svg { width: 16px; height: 16px; vertical-align: -3px; }
+.pl-cat.closed .pl-body { display: none; }
+.pl-body { border-top: 1px solid var(--line); }
+.pl-item { display: flex; gap: 10px; align-items: center; width: 100%; padding: 11px 14px; border: 0; border-top: 1px solid var(--line); background: none; text-align: start; cursor: pointer; color: var(--ink); }
+.pl-item:first-child { border-top: 0; }
+.pl-item .grow { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.pl-item .nm { font-weight: 700; }
+.pl-item .meta { font-size: 12.5px; color: var(--muted); }
+.pl-price { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; flex: none; }
+.pl-price .one { font-weight: 700; }
+.pl-price .bulk { font-size: 12.5px; color: var(--accent); font-weight: 700; }
+.pl-sub { padding: 9px 14px 7px; border-top: 1px solid var(--line); background: var(--surface-2); font-size: 13px; font-weight: 700; color: var(--ink-2); letter-spacing: .02em; }
+.pl-body > .pl-sub:first-child { border-top: 0; }
+.pl-add { width: 100%; border: 0; border-top: 1px dashed var(--line); background: none; color: var(--accent); font-weight: 700; padding: 11px 14px; text-align: start; cursor: pointer; }
+.pl-sum { display: flex; flex-wrap: wrap; gap: 6px; }
+.rng { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 8px; align-items: end; }
+.rng .dash { padding-bottom: 12px; color: var(--muted); }
+.chk-l { display: flex; gap: 10px; align-items: center; font-weight: 700; cursor: pointer; }
+.chk-l input { width: 20px; height: 20px; accent-color: var(--accent); }
 /* pdf */
 .pdf-pages { display: flex; flex-direction: column; gap: 10px; }
 .pdf-pages img { width: 100%; height: auto; display: block; border-radius: 6px; border: 1px solid var(--line); background: #fff; }
@@ -258,7 +286,7 @@ button.chip { cursor: pointer; font: inherit; font-size: 13.5px; padding: 6px 10
 <script>
 (() => {
 'use strict';
-const COMPANY = 'גרינפלסטש הנדסה', PHONE = '0523180299', APP_VERSION = 4;
+const COMPANY = 'גרינפלסטש הנדסה', PHONE = '0523180299', APP_VERSION = 7;
 const VAULT = 'gp.vault.v1', META = 'gp.meta.v1';
 const $app = document.getElementById('app');
 
@@ -271,11 +299,14 @@ const I = {
   more: '<circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>',
   lock: '<rect x="5" y="10.5" width="14" height="10" rx="2"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/>',
   back: '<path d="M9 5l7 7-7 7"/>',
+  chev: '<path d="M15 6l-6 6 6 6"/>',
+  edit: '<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/>',
   plus: '<path d="M12 5v14M5 12h14"/>',
   x: '<path d="M6 6l12 12M18 6L6 18"/>',
   wa: '<path d="M4.5 19.5l1.2-3.9A8 8 0 1 1 8.6 18.4z"/><path d="M9.2 8.6c.2-.4.5-.4.8-.4h.5c.2 0 .4.1.5.4l.6 1.5c.1.2 0 .5-.1.6l-.5.6c.6 1.1 1.5 2 2.6 2.6l.6-.5c.2-.2.4-.2.6-.1l1.5.6c.3.1.4.3.4.5v.5c0 .3 0 .6-.4.8-.6.4-1.5.5-2.3.2a9 9 0 0 1-5-5c-.3-.8-.2-1.7.2-2.3z"/>',
   copy: '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/>',
   mic: '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M8.5 21h7"/>',
+  tag: '<path d="M3 12V4a1 1 0 0 1 1-1h8l9 9-9 9z"/><circle cx="7.5" cy="7.5" r="1.5"/>',
   users: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.2a6.5 6.5 0 0 1 3.5 5.8"/>',
 };
 const ic = (n) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${I[n]}</svg>`;
@@ -300,26 +331,76 @@ const waNum = (p) => { let d = String(p || '').replace(/\D/g, ''); if (!d) retur
 const waLink = (phone, text) => { const n = waNum(phone); return n ? `https://wa.me/${n}?text=${encodeURIComponent(text)}` : ''; };
 
 /* ---------- data model ---------- */
+/* price list: one row per item. min/max = price range for 1-3 units; bmin/bmax = price for 4 units and up. */
+const PRICE_CATS = ['שקעים', 'תאורה', 'מפסקים ובקרה', 'מאווררים ומזגנים', 'לוחות ומונים', 'תשתיות וחציבות', 'עמדות טעינה'];
 const PRICE_SEED = [
-  ['נקודות', 'נקודת מאור', 'נקודה'], ['נקודות', 'נקודת שקע רגיל', 'נקודה'], ['נקודות', 'שקע כוח 16A', 'נקודה'],
-  ['נקודות', 'נקודת מזגן', 'נקודה'], ['נקודות', 'נקודת תקשורת / טלוויזיה', 'נקודה'], ['נקודות', 'הזנה לדוד / בוילר', 'נקודה'],
-  ['תאורה', 'התקנת גוף תאורה', 'יחידה'], ['תאורה', 'התקנת ספוט שקוע', 'יחידה'], ['תאורה', 'התקנת פס לד', 'מטר'],
-  ['לוחות', 'החלפת לוח חשמל דירתי', 'יחידה'], ['לוחות', 'הוספת מאמ"ת', 'יחידה'], ['לוחות', 'התקנת ממסר פחת', 'יחידה'],
-  ['שונות', 'הכנה לעמדת טעינה לרכב חשמלי', 'יחידה'], ['שונות', 'בדיקת הארקה', 'בדיקה'],
-  ['עבודה', 'שעת עבודה', 'שעה'], ['עבודה', 'יום עבודה', 'יום'],
+  // [category, name, unit, min, max, bulkMin, bulkMax, approved]
+  ['שקעים', 'נקודת שקע חדשה', 'נקודה', 250, 350, '', '', true],
+  ['שקעים', 'החלפה או השמשה של שקע קיים', 'שקע', 150, 350, '', '', true],
+  ['שקעים', 'שקע מוגן מים', 'שקע', 350, 450, 300, 300, true],
+  ['שקעים', 'שקע למכונת כביסה כולל קו מוגן מים', 'נקודה', 650, 650, '', '', false],
+  ['תאורה', 'גוף תאורה צמוד תקרה', 'גוף', 150, 350, 150, 200, true],
+  ['תאורה', 'גוף תאורה תלוי או שנדליר', 'גוף', 250, 250, '', '', false],
+  ['תאורה', 'גוף תאורה חוץ', 'גוף', 225, 225, 250, 250, false],
+  ['תאורה', 'פרוז\'קטור בגובה', 'גוף', 350, 350, '', '', false],
+  ['תאורה', 'החלפת פרוז\'קטור בגינה', 'גוף', 150, 150, '', '', false],
+  ['תאורה', 'גוף Up & Down', 'גוף', 80, 80, '', '', false],
+  ['תאורה', 'נקודת מאור חדשה כולל מפסק', 'נקודה', 350, 350, '', '', false],
+  ['תאורה', 'ספוט', 'גוף', '', '', '', '', false],
+  ['תאורה', 'פס לד', 'מטר', '', '', '', '', false],
+  ['מפסקים ובקרה', 'מפסק, התקנה או הזזה', 'מפסק', 230, 230, 150, 150, false],
+  ['מפסקים ובקרה', 'שעון שבת, בדיקה', 'יחידה', 350, 350, '', '', false],
+  ['מפסקים ובקרה', 'שעון שבת, בדיקה והחלפה', 'יחידה', 450, 450, '', '', false],
+  ['מפסקים ובקרה', 'ממסר צעד', 'יחידה', 600, 600, '', '', false],
+  ['מפסקים ובקרה', 'פוטו־צל', 'יחידה', 450, 450, '', '', false],
+  ['מאווררים ומזגנים', 'מאוורר תקרה', 'יחידה', 450, 450, 480, 480, false],
+  ['מאווררים ומזגנים', 'חיבור מזגן כולל 7 גידים', 'מזגן', 600, 600, '', '', false],
+  ['מאווררים ומזגנים', 'נקודת כוח למזגן', 'נקודה', '', '', '', '', false],
+  ['לוחות ומונים', 'החלפת מא"ז', 'יחידה', 150, 150, '', '', false],
+  ['לוחות ומונים', 'התקנת מונה תלת־פאזי', 'יחידה', 750, 750, '', '', false],
+  ['תשתיות וחציבות', 'חציבה', 'מטר', '', '', '', '', false],
+  ['תשתיות וחציבות', 'פתיחת רצפה', 'מטר', '', '', '', '', false],
+  ['תשתיות וחציבות', 'קו הארקה עם אלקטרודה', 'עבודה', 2800, 3500, '', '', false],
+  ['תשתיות וחציבות', 'ביטול נקודה וסגירה', 'נקודה', 80, 150, '', '', false],
+  ['עמדות טעינה', 'התקנת עמדת טעינה', 'עמדה', 2500, 5400, '', '', false],
 ];
+const BOARD_SUB = 'לוח חשמל לפי גודל';
+const BOARDS = [['לוח חשמל ראשי 12 מקום', 1200, 1200], ['לוח חשמל 24 מקום', 1500, 3000], ['לוח חשמל 36 מקום', 1500, 3500], ['לוח חשמל 48 מקום', 2000, 5000], ['לוח חשמל 52 מקום', 2000, 6000], ['לוח חשמל 72 מקום', 3500, 7000]];
+const boardItems = () => BOARDS.map(([name, min, max]) => ({ id: uid(), cat: 'לוחות ומונים', sub: BOARD_SUB, name, unit: 'לוח', min, max, bmin: '', bmax: '', ok: true, note: '' }));
+const seedPrices = () => PRICE_SEED.map(([cat, name, unit, min, max, bmin, bmax, ok]) => ({ id: uid(), cat, sub: '', name, unit, min, max, bmin, bmax, ok, note: ok ? '' : (min === '' ? '' : 'ממוצע מההצעות שלך') })).concat(boardItems());
+const hasP = (v) => v !== '' && v != null && !Number.isNaN(Number(v));
+const fmtRange = (a, b) => !hasP(a) ? '' : (hasP(b) && Number(b) !== Number(a) ? `${ilsTxt(a)} עד ${ilsTxt(b)} ₪` : `${ilsTxt(a)} ₪`);
+const plGroups = (items) => { const out = [['', items.filter((x) => !x.sub)]]; [...new Set(items.map((x) => x.sub).filter(Boolean))].forEach((sb) => out.push([sb, items.filter((x) => x.sub === sb)])); return out.filter(([, l]) => l.length); };
+const unitPrice = (pr, qty) => (num(qty) >= 4 && hasP(pr.bmin) ? num(pr.bmin) : num(pr.min));
+function migratePrices(d) {
+  if (!d.priceCats) d.priceCats = [];
+  if (!d.prices) d.prices = [];
+  const old = (d.prices || []).filter((x) => !('min' in x));
+  if (old.length) {
+    if (old.every((x) => !hasP(x.price))) d.prices = (d.prices || []).filter((x) => 'min' in x).concat(seedPrices());
+    else d.prices = d.prices.map((x) => ('min' in x ? x : { id: x.id, cat: x.cat, name: x.name, unit: x.unit, min: x.price, max: x.price, bmin: '', bmax: '', ok: true, note: '' }));
+  }
+  if (!d.priceCats.length) d.priceCats = [...new Set([...PRICE_CATS.filter((c) => d.prices.some((x) => x.cat === c)), ...d.prices.map((x) => x.cat)])];
+  if (!(d.seeds || []).includes('boards-v1')) {
+    d.prices = d.prices.filter((x) => !(x.name === 'החלפת לוח חשמל' && !x.ok));
+    const have = new Set(d.prices.map((x) => x.name));
+    d.prices.push(...boardItems().filter((x) => !have.has(x.name)));
+    d.seeds = [...(d.seeds || []), 'boards-v1'];
+  }
+  d.prices.forEach((x) => { if (x.sub == null) x.sub = ''; if (!d.priceCats.includes(x.cat)) d.priceCats.push(x.cat); });
+  return d;
+}
 const blank = () => ({
   v: 1,
   settings: { vat: 18, validity: 21, terms: 30, follow: 7, lastQuote: 4039, backupAt: '' },
   clients: [], quotes: [], jobs: [], debts: [],
-  prices: PRICE_SEED.map(([cat, name, unit]) => ({ id: uid(), cat, name, unit, price: '' })),
+  prices: seedPrices(), priceCats: [...PRICE_CATS], seeds: ['boards-v1'],
 });
 function demo() {
   const d = blank(), t = today();
   d.settings.backupAt = t;
   const c = (name, phone, address) => { const o = { id: uid(), name, phone, address, email: '', notes: 'דוגמה' }; d.clients.push(o); return o.name; };
   const a = c('משפחת כהן (דוגמה)', '050-1234567', 'טבריה'), b = c('מאפיית השדה (דוגמה)', '052-7654321', 'עפולה'), e = c('בית ספר אורנים (דוגמה)', '054-1112233', 'נוף הגליל');
-  d.prices.forEach((p, i) => { p.price = [180, 160, 260, 320, 150, 380, 120, 95, 70, 4200, 140, 450, 1800, 350, 220, 1600][i]; });
   d.quotes.push(
     { id: uid(), no: 4036, date: addDays(t, -24), client: a, location: 'טבריה, רחוב הגליל', status: 'approved', sentDate: addDays(t, -24), docUrl: '', notes: '', supply: { materials: 'גרינפלסטש הנדסה', lighting: 'הלקוח', accessories: 'גרינפלסטש הנדסה' },
       items: [{ area: 'מטבח', name: 'נקודת שקע רגיל', qty: 6, unit: 'נקודה', price: 160 }, { area: 'מטבח', name: 'שקע כוח 16A', qty: 2, unit: 'נקודה', price: 260 }, { area: 'סלון', name: 'התקנת ספוט שקוע', qty: 10, unit: 'יחידה', price: 95 }] },
@@ -604,7 +685,7 @@ function runCountdown() {
   tick(); countdown = setInterval(tick, 1000);
 }
 async function enter(r) {
-  KEY = r.key; SALT = r.salt; KITER = r.iter; MODE = r.mode; db = r.data; demoMode = false;
+  KEY = r.key; SALT = r.salt; KITER = r.iter; MODE = r.mode; db = migratePrices(r.data); demoMode = false; save();
   lockState.fails = 0; lockState.until = 0; clearInterval(countdown); tab = 'home'; sheet = null; render();
 }
 async function onPattern(seq, pad) {
@@ -731,6 +812,9 @@ function viewJobs() {
   <div class="card">${list.length ? `<div class="rows">${list.map(jobRow).join('')}</div>` : `<div class="empty"><b>אין עבודות ברשימה הזו</b><span>הצעה שאושרה הופכת לעבודה בלחיצה אחת.</span></div>`}</div>
   <button class="fab" data-sheet="jobForm">${ic('plus')} עבודה חדשה</button>`;
 }
+function viewPrices() {
+  return `<div class="section-title"><h2>מחירון</h2><span class="muted small">לפני מע"מ</span></div>${SHEETS.pricesBody()}`;
+}
 function viewMore() {
   const owed = (name) => db.debts.filter((d) => d.client === name && dState(d) !== 'paid').reduce((s, d) => s + dBal(d), 0);
   const cl = db.clients.slice().sort((a, b) => owed(b.name) - owed(a.name) || a.name.localeCompare(b.name, 'he'));
@@ -738,7 +822,6 @@ function viewMore() {
   <div class="card">${cl.length ? `<div class="rows">${cl.map((c) => { const o = owed(c.name); return `<button class="row" data-open="client" data-id="${c.id}"><span class="grow"><span class="t">${esc(c.name)}</span><span class="s">${esc([c.address, c.phone].filter(Boolean).join(' · '))}</span></span>${o > 0 ? `<span class="end"><span class="amt">${ils(o)}</span><span class="chip ${db.debts.some((d) => d.client === c.name && dState(d) === 'late') ? 'bad' : 'acc'}">חייב</span></span>` : ''}</button>`; }).join('')}</div>` : `<div class="empty"><b>אין לקוחות עדיין</b><span>לקוח נוצר לבד כשרושמים הצעה או חוב על שם חדש.</span></div>`}</div>
   <div class="section-title"><h2>מערכת</h2></div>
   <div class="card"><div class="rows">
-    <button class="row" data-sheet="prices"><span class="grow"><span class="t">מחירון</span><span class="s">${db.prices.length} פריטים · ${db.prices.filter((p) => p.price === '' || p.price == null).length} בלי מחיר</span></span></button>
     <button class="row" data-sheet="settings"><span class="grow"><span class="t">הגדרות</span><span class="s">מע"מ ${esc(S().vat)}% · תוקף ${esc(S().validity)} ימי עסקים · תשלום שוטף ${esc(S().terms)}</span></span></button>
     <button class="row" data-sheet="backup"><span class="grow"><span class="t">גיבוי ושחזור</span><span class="s">${S().backupAt ? `גיבוי אחרון ${fmtD(S().backupAt)}` : 'עוד לא נעשה גיבוי'}</span></span></button>
     <button class="row" data-sheet="pattern"><span class="grow"><span class="t">${MODE === 'pattern' ? 'שינוי תבנית נעילה' : 'מעבר לנעילה בתבנית'}</span><span class="s">הנתונים מוצפנים על המכשיר</span></span></button>
@@ -998,7 +1081,7 @@ const SHEETS = {
           ${inp('location', 'מיקום העבודה', q.location, 'text', 'placeholder="למשל: וילה וגאס, נוף כינרת"')}
         </div>`;
     } else if (wiz === 1) {
-      const cats = [...new Set(db.prices.map((p) => p.cat))];
+      const cats = db.priceCats.filter((c) => db.prices.some((p) => p.cat === c));
       const used = new Set(q.areas);
       body = `<div class="wiz-q">מה כוללת העבודה?</div><div class="wiz-hint">מחלקים לפי אזורים או סוגי עבודה. בכל אזור כותבים שורות בניסוח מקצועי, או בוחרים מהמחירון.</div>
         ${q.areas.map((a, ai) => {
@@ -1006,7 +1089,7 @@ const SHEETS = {
           return `<div class="card stack"><div class="area-head"><h3>${esc(a)}</h3><button type="button" class="x" aria-label="הסרת האזור ${esc(a)}" data-act="rmArea" data-i="${ai}">${ic('x')}</button></div>
             ${rows.length ? `<div class="rows">${rows.map(([it, idx]) => `<div class="item"><span class="grow"><b>${esc(it.name)}</b>${num(it.price) ? `<span class="muted small" style="display:block">${ils(it.price)} ל${esc(it.unit || 'יח\'')}</span>` : ''}</span><span class="qty"><input aria-label="כמות" inputmode="decimal" data-qty="${idx}" value="${esc(it.qty)}"></span><button type="button" class="x" aria-label="הסרה" data-act="rmItem" data-i="${idx}">${ic('x')}</button></div>`).join('')}</div>` : '<span class="muted small">עוד אין שורות באזור הזה.</span>'}
             <div class="addline"><input id="nl-${ai}" placeholder="למשל: התקנת נקודות מאור בתקרה" aria-label="שורה חדשה ב${esc(a)}"><button type="button" class="btn sm pri" data-act="addLine" data-a="${ai}">הוספה</button></div>
-            <div class="addline"><select data-pick="${ai}" aria-label="הוספה מהמחירון ל${esc(a)}"><option value="">או בחר מהמחירון…</option>${cats.map((c) => `<optgroup label="${esc(c)}">${db.prices.filter((p) => p.cat === c).map((p) => `<option value="${p.id}">${esc(p.name)}${p.price !== '' && p.price != null ? ` · ${ilsTxt(p.price)} ₪` : ''}</option>`).join('')}</optgroup>`).join('')}</select></div>
+            <div class="addline"><select data-pick="${ai}" aria-label="הוספה מהמחירון ל${esc(a)}"><option value="">או בחר מהמחירון…</option>${cats.map((c) => `<optgroup label="${esc(c)}">${db.prices.filter((p) => p.cat === c).map((p) => `<option value="${p.id}">${esc(p.name)}${hasP(p.min) ? ` · ${fmtRange(p.min, p.max)}` : ''}</option>`).join('')}</optgroup>`).join('')}</select></div>
           </div>`;
         }).join('')}
         <div class="card stack"><h3>${q.areas.length ? 'עוד אזור או סוג עבודה' : 'בחר אזור או סוג עבודה כדי להתחיל'}</h3>
@@ -1085,13 +1168,47 @@ const SHEETS = {
       ${field('address', 'כתובת / עיר', c.address)}${field('email', 'אימייל', c.email, 'email')}${area('notes', 'הערות', c.notes)}
       <button class="btn pri" type="submit">שמירה</button></form>`);
   },
-  prices() {
-    const cats = [...new Set(db.prices.map((p) => p.cat))];
-    return sheetFrame('מחירון', `<div class="banner info"><span class="dot"></span><div class="grow">המחיר ליחידה לפני מע"מ. הוא נכנס אוטומטית להצעות חדשות, ואפשר לשנות אותו בכל הצעה.</div></div>
-      <form class="form" id="pricesForm">${cats.map((c) => `<div class="card stack"><h3>${esc(c)}</h3>${db.prices.filter((p) => p.cat === c).map((p) => `<div class="item"><span class="grow"><b>${esc(p.name)}</b><span class="muted small" style="display:block">ל${esc(p.unit)}</span></span><span class="qty"><input aria-label="מחיר ${esc(p.name)}" inputmode="decimal" name="p_${p.id}" value="${esc(p.price)}" placeholder="₪"></span><button type="button" class="x" aria-label="מחיקה" data-act="delPrice" data-id="${p.id}">${ic('x')}</button></div>`).join('')}</div>`).join('')}
-      <button class="btn pri" type="submit">שמירת מחירים</button></form>
-      <div class="card stack"><h3>פריט חדש</h3><form class="form" id="newPrice"><div class="grid2">${field('cat', 'קטגוריה', cats[0] || '', 'text', 'list="cats" required')}${field('unit', 'יחידה', 'יחידה')}</div><datalist id="cats">${cats.map((c) => `<option value="${esc(c)}"></option>`).join('')}</datalist>
-      ${field('name', 'שם הפריט', '', 'text', 'required')}${field('price', 'מחיר', '', 'number', 'inputmode="decimal" min="0"')}<button class="btn" type="submit">${ic('plus')} הוספה למחירון</button></form></div>`);
+  prices() { return sheetFrame('מחירון', SHEETS.pricesBody()); },
+  pricesBody() {
+    const q = plQuery.trim(), match = (p) => !q || p.name.includes(q) || p.cat.includes(q) || (p.sub || '').includes(q);
+    const missing = db.prices.filter((p) => !hasP(p.min)).length, pending = db.prices.filter((p) => hasP(p.min) && !p.ok).length;
+    const cats = db.priceCats.map((c) => ({ c, items: db.prices.filter((p) => p.cat === c && match(p)) })).filter((x) => !q || x.items.length);
+    return `
+      <div class="pl-tools"><input id="pl-q" type="search" placeholder="חיפוש פריט" aria-label="חיפוש במחירון" value="${esc(plQuery)}"><button class="btn sm" data-sheet="priceCat">${ic('plus')} קטגוריה</button></div>
+      <div class="pl-sum"><span class="chip">${db.prices.length} פריטים</span>${pending ? `<span class="chip warn">${pending} ממוצע, לאישור</span>` : ''}${missing ? `<span class="chip bad">${missing} חסר מחיר</span>` : ''}<span class="chip acc">מחיר לפני מע"מ, כולל אביזרים</span></div>
+      ${cats.length ? cats.map(({ c, items }) => { const closed = !q && plClosed.has(c); return `<div class="card pl-cat ${closed ? 'closed' : ''}">
+        <div class="pl-head"><button class="pl-toggle" data-act="plToggle" data-c="${esc(c)}" aria-expanded="${!closed}">${ic('chev')}<h3>${esc(c)}</h3><span class="muted small">${items.length}</span></button>
+          <button class="x" aria-label="עריכת הקטגוריה ${esc(c)}" data-sheet="priceCat" data-id="${esc(c)}">${ic('edit')}</button></div>
+        <div class="pl-body">${plGroups(items).map(([sub, list]) => (sub ? `<div class="pl-sub">${esc(sub)}</div>` : '') + list.map((p) => `<button class="pl-item" data-sheet="priceItem" data-id="${p.id}">
+            <span class="grow"><span class="nm">${esc(p.name)}</span><span class="meta">ל${esc(p.unit || 'יחידה')}${p.note ? ` · ${esc(p.note)}` : ''}</span></span>
+            <span class="pl-price">${hasP(p.min) ? `<span class="one">${fmtRange(p.min, p.max)}</span>${hasP(p.bmin) ? `<span class="bulk">מ־4 ומעלה: ${fmtRange(p.bmin, p.bmax)}</span>` : ''}${p.ok ? '' : '<span class="chip warn">לאישור</span>'}` : '<span class="chip bad">חסר מחיר</span>'}</span>
+          </button>`).join('')).join('') || '<div class="pl-item" style="cursor:default"><span class="muted small">אין עדיין פריטים בקטגוריה</span></div>'}
+          <button class="pl-add" data-sheet="priceItem" data-id="new:${esc(c)}">${ic('plus')} פריט ב${esc(c)}</button></div></div>`; }).join('') : '<div class="empty">לא נמצא פריט כזה</div>'}`;
+  },
+  priceItem(id) {
+    const isNew = id.startsWith('new:'), p = isNew ? { cat: id.slice(4), sub: '', name: '', unit: 'יחידה', min: '', max: '', bmin: '', bmax: '', ok: true, note: '' } : db.prices.find((x) => x.id === id);
+    if (!p) return '';
+    const num2 = (k, label, v) => field(k, label, v, 'number', 'inputmode="decimal" min="0"');
+    return sheetFrame(isNew ? 'פריט חדש' : p.name, `<form class="form" id="priceItemForm" data-id="${isNew ? '' : p.id}">
+      ${field('name', 'שם הפריט', p.name, 'text', 'required')}
+      <div class="grid2">${select('cat', 'קטגוריה', p.cat, db.priceCats.map((c) => [c, c]))}${field('unit', 'יחידה', p.unit, 'text', 'list="units"')}</div>
+      ${field('sub', 'תת־נושא בתוך הקטגוריה', p.sub || '', 'text', 'list="subs" placeholder="לא חובה. למשל: לוח חשמל לפי גודל"')}
+      <datalist id="subs">${[...new Set(db.prices.filter((x) => x.cat === p.cat && x.sub).map((x) => x.sub))].map((x) => `<option value="${esc(x)}"></option>`).join('')}</datalist>
+      <datalist id="units">${['יחידה', 'נקודה', 'גוף', 'שקע', 'מפסק', 'מטר', 'לוח', 'עבודה', 'שעה', 'יום'].map((u) => `<option value="${u}"></option>`).join('')}</datalist>
+      <div class="card stack"><h3>עבודה בודדת, 1 עד 3 יחידות</h3><div class="rng">${num2('min', 'מ־', p.min)}<span class="dash">עד</span>${num2('max', 'עד', p.max)}</div><span class="hint">מחיר אחד: ממלאים רק את השדה הראשון. ההצעה מתחילה מהמחיר הנמוך.</span></div>
+      <div class="card stack"><h3>4 יחידות ומעלה</h3><div class="rng">${num2('bmin', 'מ־', p.bmin)}<span class="dash">עד</span>${num2('bmax', 'עד', p.bmax)}</div><span class="hint">ריק = אותו מחיר כמו בעבודה בודדת. מ־4 יחידות בהצעה המחיר מתחלף לבד.</span></div>
+      ${field('note', 'הערה', p.note, 'text', 'placeholder="למשל: כולל חציבה עד מטר"')}
+      <label class="chk-l"><input type="checkbox" name="ok" ${p.ok ? 'checked' : ''}> המחיר מאושר</label>
+      <button class="btn pri" type="submit">שמירה</button></form>
+      ${isNew ? '' : `<button class="btn bad" data-act="delPrice" data-id="${p.id}">מחיקת הפריט</button>`}`);
+  },
+  priceCat(name) {
+    const isNew = !name, i = db.priceCats.indexOf(name), n = db.prices.filter((p) => p.cat === name).length;
+    return sheetFrame(isNew ? 'קטגוריה חדשה' : `קטגוריה: ${name}`, `<form class="form" id="priceCatForm" data-id="${esc(name || '')}">
+      ${field('name', 'שם הקטגוריה', name || '', 'text', 'required placeholder="למשל: מצלמות ואינטרקום"')}
+      <button class="btn pri" type="submit">שמירה</button></form>
+      ${isNew ? '' : `<div class="card stack"><h3>מיקום ברשימה</h3><div class="btns full"><button class="btn" data-act="catMove" data-c="${esc(name)}" data-d="-1" ${i <= 0 ? 'disabled' : ''}>למעלה</button><button class="btn" data-act="catMove" data-c="${esc(name)}" data-d="1" ${i >= db.priceCats.length - 1 ? 'disabled' : ''}>למטה</button></div></div>
+      <button class="btn bad" data-act="catDel" data-c="${esc(name)}">${n ? `מחיקת הקטגוריה ו־${n} הפריטים שבה` : 'מחיקת הקטגוריה'}</button>`}`);
   },
   settings() {
     const s = S();
@@ -1124,15 +1241,17 @@ const SHEETS = {
       <div class="banner info"><span class="dot"></span><div class="grow">קבצי גיבוי לא מושפעים. הם נפתחים בסיסמת הגיבוי.</div></div>`);
   },
 };
-let draft = null;
+let draft = null, plQuery = '';
+const plClosed = new Set((() => { try { return JSON.parse(localStorage.getItem('gp.plClosed') || '[]'); } catch { return []; } })());
+const savePlClosed = () => { try { localStorage.setItem('gp.plClosed', JSON.stringify([...plClosed])); } catch {} };
 
 /* ---------- render ---------- */
 function render() {
   if (!db) return renderLock();
   const late = db.debts.filter((d) => dState(d) === 'late').length;
   const follow = db.quotes.filter((q) => qState(q) === 'follow').length;
-  const body = { home: viewHome, debts: viewDebts, quotes: viewQuotes, jobs: viewJobs, more: viewMore }[tab]();
-  const navs = [['home', 'בית', 'home', 0], ['debts', 'גבייה', 'coin', late], ['quotes', 'הצעות', 'doc', follow], ['jobs', 'עבודות', 'tool', 0], ['more', 'לקוחות ועוד', 'users', 0]];
+  const body = { home: viewHome, debts: viewDebts, quotes: viewQuotes, prices: viewPrices, jobs: viewJobs, more: viewMore }[tab]();
+  const navs = [['home', 'בית', 'home', 0], ['debts', 'גבייה', 'coin', late], ['quotes', 'הצעות', 'doc', follow], ['prices', 'מחירון', 'tag', 0], ['jobs', 'עבודות', 'tool', 0], ['more', 'לקוחות', 'users', 0]];
   const y = scrollY;
   $app.innerHTML = `<header class="topbar"><div class="wrap"><div class="brand">${MARK}<div style="min-width:0"><h1>מרכז שליטה</h1><span class="sub">${demoMode ? 'הדגמה · ' : ''}${COMPANY}</span></div></div><button class="icon-btn" data-act="lock" aria-label="נעילה">${ic('lock')}</button></div></header>
   <main class="wrap stack">${body}</main>
@@ -1149,6 +1268,7 @@ function render() {
 }
 function openSheet(name, id) { draft = null; if (name === 'pdf') dropPdf(); if (name === 'quoteForm') wiz = id ? 4 : 0; if (name === 'pattern') chg = { step: MODE === 'pattern' ? 'current' : 'new', first: null }; sheet = { name, id, back: sheet }; render(); $app.querySelector('.sheet')?.scrollTo(0, 0); }
 function closeSheet() { if (sheet?.name === 'voice') { stopRec(); voiceText = $app.querySelector('#v-text')?.value || voiceText; } sheet = sheet?.back && SHEETS[sheet.back.name](sheet.back.id) ? sheet.back : null; draft = null; render(); }
+function refresh() { if (sheet) rerenderSheet(); else render(); }
 function rerenderSheet() { const y = $app.querySelector('.sheet')?.scrollTop || 0; sheet.y = y; render(); sheet.y = 0; }
 function afterSave(msg, go) { save(); toast(msg); if (go) { sheet = go; draft = null; } else closeSheet(); render(); }
 
@@ -1198,7 +1318,10 @@ $app.addEventListener('click', async (e) => {
     case 'delJob': ask('מחיקת עבודה', 'העבודה תימחק. חוב שכבר נרשם בגבייה נשאר.', 'מחיקה', 'bad', () => { db.jobs = db.jobs.filter((x) => x.id !== id); sheet = null; save(); render(); toast('נמחק'); }); break;
     case 'delClient': ask('מחיקת לקוח', 'הכרטיס יימחק. הצעות וחובות על שמו נשארים.', 'מחיקה', 'bad', () => { db.clients = db.clients.filter((x) => x.id !== id); sheet = null; save(); render(); toast('נמחק'); }); break;
     case 'delPay': { const d = D(); d.payments.splice(Number(t.dataset.i), 1); save(); rerenderSheet(); toast('התשלום נמחק'); break; }
-    case 'delPrice': ask('מחיקת פריט', 'הפריט יוסר מהמחירון. הצעות קיימות לא משתנות.', 'מחיקה', 'bad', () => { db.prices = db.prices.filter((x) => x.id !== id); save(); rerenderSheet(); }); break;
+    case 'delPrice': ask('מחיקת פריט', 'הפריט יוסר מהמחירון. הצעות קיימות לא משתנות.', 'מחיקה', 'bad', () => { db.prices = db.prices.filter((x) => x.id !== id); save(); closeSheet(); toast('הפריט נמחק'); }); break;
+    case 'plToggle': { const c = t.dataset.c; if (plClosed.has(c)) plClosed.delete(c); else plClosed.add(c); savePlClosed(); refresh(); break; }
+    case 'catMove': { const c = t.dataset.c, i = db.priceCats.indexOf(c), j = i + Number(t.dataset.d); if (j < 0 || j >= db.priceCats.length) break; db.priceCats.splice(i, 1); db.priceCats.splice(j, 0, c); save(); rerenderSheet(); break; }
+    case 'catDel': { const c = t.dataset.c, n = db.prices.filter((p) => p.cat === c).length; ask('מחיקת קטגוריה', n ? `הקטגוריה ו־${n} הפריטים שבה יימחקו. הצעות קיימות לא משתנות.` : 'הקטגוריה תימחק.', 'מחיקה', 'bad', () => { db.priceCats = db.priceCats.filter((x) => x !== c); db.prices = db.prices.filter((p) => p.cat !== c); save(); closeSheet(); toast('הקטגוריה נמחקה'); }); break; }
     case 'rmItem': syncDraft(); draft.items.splice(Number(t.dataset.i), 1); rerenderSheet(); break;
     case 'wizGo': syncDraft(); wizShow(Number(t.dataset.step)); break;
     case 'pdfShare': {
@@ -1292,17 +1415,18 @@ $app.addEventListener('click', async (e) => {
 function syncDraft() {
   if (!draft) return;
   $app.querySelectorAll('.sheet [data-k]').forEach((el) => { draft[el.dataset.k] = el.value; });
-  $app.querySelectorAll('.sheet [data-qty]').forEach((inp) => { const it = draft.items[Number(inp.dataset.qty)]; if (it) it.qty = num(inp.value) || 1; });
+  $app.querySelectorAll('.sheet [data-qty]').forEach((inp) => { const it = draft.items[Number(inp.dataset.qty)]; if (!it) return; it.qty = num(inp.value) || 1; const pr = it.pid && db.prices.find((x) => x.id === it.pid); if (pr && hasP(pr.min)) it.price = unitPrice(pr, it.qty); });
 }
 $app.addEventListener('change', (e) => {
   const pick = e.target.closest('select[data-pick]');
   if (pick && pick.value) {
     syncDraft(); const p = db.prices.find((x) => x.id === pick.value), ai = Number(pick.dataset.pick);
-    draft.items.push({ area: draft.areas[ai], name: p.name, qty: 1, unit: p.unit, price: num(p.price) });
+    draft.items.push({ area: draft.areas[ai], name: p.name, qty: 1, unit: p.unit, price: unitPrice(p, 1), pid: p.id });
     rerenderSheet();
   }
 });
 $app.addEventListener('input', (e) => {
+  if (e.target.id === 'pl-q') { plQuery = e.target.value; const pos = e.target.selectionStart; refresh(); const el = $app.querySelector('#pl-q'); if (el) { el.focus(); try { el.setSelectionRange(pos, pos); } catch {} } return; }
   if (e.target.id !== 'w-total' || !draft) return;
   draft.total = e.target.value; const price = qSub(draft), vat = price * vatRate();
   const v = $app.querySelector('#w-vat'), g = $app.querySelector('#w-gross');
@@ -1344,8 +1468,25 @@ $app.addEventListener('submit', async (e) => {
       if (!id) db.clients.push(c);
       afterSave('הלקוח נשמר', { name: 'client', id: c.id, back: null }); break;
     }
-    case 'pricesForm': db.prices.forEach((p) => { const val = v['p_' + p.id]; if (val !== undefined) p.price = val === '' ? '' : num(val); }); save(); toast('המחירון נשמר'); closeSheet(); break;
-    case 'newPrice': db.prices.push({ id: uid(), cat: v.cat.trim(), name: v.name.trim(), unit: v.unit.trim() || 'יחידה', price: v.price === '' ? '' : num(v.price) }); save(); rerenderSheet(); toast('נוסף למחירון'); break;
+    case 'priceItemForm': {
+      const val = (x) => (x === '' || x == null ? '' : num(x));
+      let min = val(v.min), max = val(v.max), bmin = val(v.bmin), bmax = val(v.bmax);
+      if (min === '' && max !== '') { min = max; } if (max === '' && min !== '') max = min;
+      if (bmin === '' && bmax !== '') { bmin = bmax; } if (bmax === '' && bmin !== '') bmax = bmin;
+      if (min !== '' && max < min) [min, max] = [max, min];
+      if (bmin !== '' && bmax < bmin) [bmin, bmax] = [bmax, bmin];
+      const rec = { cat: v.cat, sub: (v.sub || '').trim(), name: v.name.trim(), unit: v.unit.trim() || 'יחידה', min, max, bmin, bmax, ok: !!v.ok, note: v.note.trim() };
+      if (!rec.name) return toast('צריך שם לפריט');
+      if (id) Object.assign(db.prices.find((x) => x.id === id), rec); else db.prices.push({ id: uid(), ...rec });
+      plClosed.delete(rec.cat); savePlClosed(); save(); toast(id ? 'הפריט עודכן' : 'הפריט נוסף'); closeSheet(); break;
+    }
+    case 'priceCatForm': {
+      const name = v.name.trim(); if (!name) return;
+      if (db.priceCats.includes(name) && name !== id) return toast('כבר יש קטגוריה בשם הזה');
+      if (id) { db.priceCats[db.priceCats.indexOf(id)] = name; db.prices.forEach((p) => { if (p.cat === id) p.cat = name; }); if (plClosed.delete(id)) { plClosed.add(name); savePlClosed(); } }
+      else db.priceCats.push(name);
+      save(); toast(id ? 'השם עודכן' : 'הקטגוריה נוספה'); closeSheet(); break;
+    }
     case 'settingsForm': Object.assign(S(), { vat: num(v.vat), validity: num(v.validity), terms: num(v.terms), follow: num(v.follow), lastQuote: num(v.lastQuote) }); afterSave('ההגדרות נשמרו'); break;
   }
 });
