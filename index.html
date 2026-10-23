@@ -286,7 +286,7 @@ button.chip { cursor: pointer; font: inherit; font-size: 13.5px; padding: 6px 10
 <script>
 (() => {
 'use strict';
-const COMPANY = 'גרינפלסטש הנדסה', PHONE = '0523180299', APP_VERSION = 9;
+const COMPANY = 'גרינפלסטש הנדסה', PHONE = '0523180299', APP_VERSION = 10;
 const VAULT = 'gp.vault.v1', META = 'gp.meta.v1';
 const $app = document.getElementById('app');
 
@@ -798,7 +798,11 @@ function viewQuotes() {
   const by = { active: all.filter((q) => q.status === 'draft' || (q.status === 'sent' && qState(q) !== 'expired')), follow: all.filter((q) => qState(q) === 'follow'), approved: all.filter((q) => q.status === 'approved'), all };
   const list = by[filter.quotes];
   return `<div class="section-title"><h2>הצעות מחיר</h2><span class="muted small">הבאה: <span class="num mono">${nextQuoteNo()}</span></span></div>
-  <button type="button" class="voice-cta" data-sheet="voice">${ic('mic')}<span class="grow"><b>הקלטה, הדבקה או PDF</b><span class="muted small">דיבור ברצף, הצעה מוכנה, או קובץ PDF שיש לך</span></span></button>
+  <div class="strip">
+    <button type="button" class="voice-cta" data-act="pickPdf">${ic('doc')}<span class="grow"><b>ייבוא PDF</b><span class="muted small">בחירת מסמך מהטלפון</span></span></button>
+    <button type="button" class="voice-cta" data-sheet="voice">${ic('mic')}<span class="grow"><b>הקלטה או הדבקה</b><span class="muted small">דיבור או טקסט מוכן</span></span></button>
+  </div>
+  <input type="file" id="v-file" accept="application/pdf,.pdf,image/*" hidden>
   ${filters('quotes', [['active', 'פתוחות', by.active.length], ['follow', 'לחזור ללקוח', by.follow.length], ['approved', 'אושרו', by.approved.length], ['all', 'הכל', all.length]])}
   <div class="card">${list.length ? `<div class="rows">${list.map(quoteRow).join('')}</div>` : `<div class="empty"><b>אין הצעות ברשימה הזו</b><span>הצעה חדשה נבנית מהמחירון ומפיקה טקסט מוכן לוואטסאפ.</span></div>`}</div>
   <button class="fab" data-sheet="quoteForm">${ic('plus')} הצעה חדשה</button>`;
@@ -1171,7 +1175,7 @@ const SHEETS = {
         <div class="rec-wrap"><button type="button" id="v-rec" class="rec" data-act="recToggle" aria-pressed="false">${ic('mic')}<span class="l">התחלת הקלטה</span></button><span id="v-state" class="muted small" aria-live="polite"></span></div>
         <div class="field"><label for="v-text">מה נקלט</label><textarea id="v-text" rows="7" placeholder="הדיבור יופיע כאן. אפשר גם להקליד, לתקן או להדביק">${esc(voiceText)}</textarea><span class="hint">אפשר לתקן כאן מילים שנקלטו לא נכון לפני השיבוץ</span></div>
         <div class="btns full"><button type="button" class="btn" data-act="pasteText">${ic('copy')} הדבקה</button><button type="button" class="btn" data-act="pickPdf">${ic('doc')} בחירת PDF</button></div>
-        <input type="file" id="v-file" accept="application/pdf,.pdf" hidden>
+        <input type="file" id="v-file" accept="application/pdf,.pdf,image/*" hidden>
         <button type="button" class="btn pri" data-act="voiceApply">שיבוץ בהצעה</button></div>
       <div class="card stack"><h3>PDF שכבר יש לך</h3><span class="muted">"בחירת PDF" קורא את הקובץ בטלפון עצמו וממלא את ההצעה. עובד עם PDF שיש בו טקסט, כמו הצעה שיצאה מגוגל דוקס. PDF סרוק או צילום של דף שולחים ל־Claude.</span></div>
       <div class="card stack"><h3>מכתב יד, צילום או PDF</h3><ol style="margin:0;padding-inline-start:20px;display:flex;flex-direction:column;gap:6px">
