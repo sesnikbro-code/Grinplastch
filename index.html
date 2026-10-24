@@ -286,7 +286,7 @@ button.chip { cursor: pointer; font: inherit; font-size: 13.5px; padding: 6px 10
 <script>
 (() => {
 'use strict';
-const COMPANY = 'גרינפלסטש הנדסה', PHONE = '0523180299', APP_VERSION = 10;
+const COMPANY = 'גרינפלסטש הנדסה', PHONE = '0523180299', APP_VERSION = 11;
 const VAULT = 'gp.vault.v1', META = 'gp.meta.v1';
 const $app = document.getElementById('app');
 
@@ -632,10 +632,10 @@ function save() {
 
 /* ---------- toast & confirm ---------- */
 let toastT;
-function toast(msg) {
+function toast(msg, ms = 2600) {
   document.querySelector('.toast')?.remove();
   const el = document.createElement('div'); el.className = 'toast'; el.setAttribute('role', 'status'); el.textContent = msg;
-  document.body.append(el); clearTimeout(toastT); toastT = setTimeout(() => el.remove(), 2600);
+  document.body.append(el); clearTimeout(toastT); toastT = setTimeout(() => el.remove(), ms);
 }
 function ask(title, body, okLabel, okClass, onOk) {
   const el = document.createElement('div'); el.className = 'scrim';
@@ -1020,13 +1020,19 @@ function pdfLines(items) {
   return lines.filter(Boolean);
 }
 
-const PDFJS = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/';
+const PDFJS_SRC = ['https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/', 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/'];
 let pdfjsLib = null;
 async function loadPdfjs() {
   if (pdfjsLib) return pdfjsLib;
-  const [lib, worker] = await Promise.all([import(PDFJS + 'pdf.min.mjs'), import(PDFJS + 'pdf.worker.min.mjs')]);
-  globalThis.pdfjsWorker = worker; lib.GlobalWorkerOptions.workerSrc = PDFJS + 'pdf.worker.min.mjs';
-  return (pdfjsLib = lib);
+  let last;
+  for (const base of PDFJS_SRC) {
+    try {
+      const [lib, worker] = await Promise.all([import(base + 'pdf.min.mjs'), import(base + 'pdf.worker.min.mjs')]);
+      globalThis.pdfjsWorker = worker; lib.GlobalWorkerOptions.workerSrc = base + 'pdf.worker.min.mjs';
+      return (pdfjsLib = lib);
+    } catch (e) { last = e; }
+  }
+  throw last || new Error('load');
 }
 async function pdfToText(file) {
   const lib = await loadPdfjs();
@@ -1038,10 +1044,13 @@ async function pdfToText(file) {
 async function importFile(file) {
   if (!file) return;
   if (/^image\//.test(file.type)) { toast('צילום עוד לא נקרא כאן. שלח אותו ל־Claude והדבק את ההצעה שחוזרת'); return; }
-  if (file.type !== 'application/pdf' && !/\.pdf$/i.test(file.name)) { toast('אפשר לבחור כאן רק קובץ PDF'); return; }
+  let head = '';
+  try { head = new TextDecoder().decode(new Uint8Array(await file.slice(0, 5).arrayBuffer())); } catch {}
+  if (head !== '%PDF-' && file.type !== 'application/pdf' && !/\.pdf$/i.test(file.name || '')) { toast('הקובץ שנבחר אינו PDF'); return; }
   toast('קורא את ה־PDF…');
-  let text = '';
-  try { text = await pdfToText(file); } catch { toast('לא הצלחתי לפתוח את הקובץ. צריך חיבור לאינטרנט בפעם הראשונה'); return; }
+  let text = '', stage = 'טעינת רכיב הקריאה';
+  try { await loadPdfjs(); stage = 'קריאת הקובץ'; text = await pdfToText(file); }
+  catch (e) { toast(`לא הצלחתי, בשלב ${stage}. ${navigator.onLine ? '' : 'אין חיבור לאינטרנט. '}(${String(e && (e.message || e.name) || e).slice(0, 60)})`, 9000); return; }
   if (text.replace(/\s/g, '').length < 20) { toast('ב־PDF הזה אין טקסט, הוא סרוק כתמונה. שלח אותו ל־Claude'); return; }
   const ta = $app.querySelector('#v-text'); if (ta) ta.value = text;
   voiceText = '';
