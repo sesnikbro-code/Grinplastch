@@ -67,7 +67,12 @@ h1, h2, h3 { margin: 0; text-wrap: balance; font-weight: 700; }
 .icon-btn { width: 40px; height: 40px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); display: grid; place-items: center; cursor: pointer; flex: none; }
 .icon-btn svg { width: 20px; height: 20px; }
 
-main { padding-block: 14px calc(var(--nav-h) + env(safe-area-inset-bottom, 0px) + 84px); }
+main { padding-block: 14px calc(var(--nav-h) + env(safe-area-inset-bottom, 0px) + 84px); touch-action: pan-y; will-change: transform; }
+body { overflow-x: hidden; }
+.pager { display: flex; justify-content: center; gap: 6px; padding-top: 2px; }
+.pager i { width: 6px; height: 6px; border-radius: 50%; background: var(--line); transition: width .2s, background-color .2s; }
+.pager i.on { width: 18px; border-radius: 3px; background: var(--accent); }
+@media (prefers-reduced-motion: reduce) { .pager i { transition: none; } }
 .stack { display: flex; flex-direction: column; gap: 12px; }
 .section-title { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-top: 10px; }
 .section-title h2 { font: 19px/1.25 var(--font-display); }
@@ -188,6 +193,15 @@ textarea.out { width: 100%; min-height: 180px; border: 1px solid var(--line); bo
 @keyframes live { 50% { opacity: .3; } }
 @media (prefers-reduced-motion: reduce) { .scope .trace, .scope .live { animation: none; } }
 .lock h1 { font: 28px/1.15 var(--font-display); }
+/* calendar questions */
+.sched { display: flex; flex-direction: column; gap: 10px; padding: 12px 0; border-top: 1px solid var(--line); }
+.sched:first-child { border-top: 0; padding-top: 2px; }
+.sched-h { display: flex; gap: 8px; align-items: baseline; justify-content: space-between; }
+.sched-h b { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sched-f { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 1.2fr); gap: 6px; }
+.sched-f input, .sched-f select { width: 100%; min-width: 0; border: 1px solid var(--line); background: var(--surface); border-radius: 10px; padding: 9px 6px; font-size: 15px; }
+.cal-q { border-color: var(--accent); }
+.cal-q .eyebrow { color: var(--accent); }
 /* price list */
 .pl-tools { display: flex; gap: 8px; }
 .pl-tools input { flex: 1; min-width: 0; border: 1px solid var(--line); background: var(--surface); border-radius: 10px; padding: 10px 12px; font-size: 16px; }
@@ -286,7 +300,7 @@ button.chip { cursor: pointer; font: inherit; font-size: 13.5px; padding: 6px 10
 <script>
 (() => {
 'use strict';
-const COMPANY = 'גרינפלסטש הנדסה', PHONE = '0523180299', APP_VERSION = 11;
+const COMPANY = 'גרינפלסטש הנדסה', PHONE = '0523180299', APP_VERSION = 14;
 const VAULT = 'gp.vault.v1', META = 'gp.meta.v1';
 const $app = document.getElementById('app');
 
@@ -437,6 +451,34 @@ const dLate = (d) => (dState(d) === 'late' ? diffDays(today(), dDue(d)) : 0);
 const client = (name) => db.clients.find((c) => c.name === name);
 const nextQuoteNo = () => Math.max(num(S().lastQuote), ...db.quotes.map((q) => num(q.no))) + 1;
 const nextJobNo = () => Math.max(0, ...db.jobs.map((j) => num(j.no))) + 1;
+const DURS = [['h1', 'שעה'], ['h2', 'שעתיים'], ['h3', '3 שעות'], ['h4', '4 שעות'], ['h6', '6 שעות'], ['h8', 'יום עבודה'], ['d2', 'יומיים'], ['d3', '3 ימים'], ['d4', '4 ימים'], ['d5', '5 ימים']];
+const needsSched = (q) => !q.sched && q.status !== 'rejected' && qState(q) !== 'expired';
+const ymd = (iso) => iso.replace(/-/g, '');
+function calEvent(q) {
+  const sc = q.sched, multi = sc.dur[0] === 'd', n = Number(sc.dur.slice(1)) || 1;
+  const title = `${q.client} · ${q.location || ''} · הצעה ${q.no}`.replace(/ · $/, '');
+  const c = client(q.client), lines = quoteModel(q).areas.flatMap((a) => [a.k, ...a.lines]);
+  const details = [`הצעת מחיר ${q.no}`, c?.phone ? `טלפון: ${c.phone}` : '', `מחיר: ${ilsTxt(qSub(q))} ש"ח לפני מע"מ`, '', ...lines].filter((x, i) => x || i === 3).join('\n');
+  let start, end;
+  if (multi) { start = ymd(sc.date); end = ymd(addDays(sc.date, n)); }
+  else { const [h, m] = (sc.time || '08:00').split(':').map(Number), mins = h * 60 + m + n * 60; start = `${ymd(sc.date)}T${pad(h)}${pad(m)}00`; end = `${ymd(addDays(sc.date, Math.floor(mins / 1440)))}T${pad(Math.floor(mins / 60) % 24)}${pad(mins % 60)}00`; }
+  return { title, details, location: q.location || '', start, end, multi };
+}
+function calUrl(q) {
+  const e = calEvent(q);
+  return 'https://calendar.google.com/calendar/render?action=TEMPLATE&ctz=Asia/Jerusalem' + `&text=${encodeURIComponent(e.title)}&dates=${e.start}/${e.end}&details=${encodeURIComponent(e.details)}&location=${encodeURIComponent(e.location)}`;
+}
+function calIcs(q) {
+  const e = calEvent(q), esc2 = (t) => String(t).replace(/\\/g, '\\\\').replace(/\n/g, '\\n').replace(/[,;]/g, (m) => '\\' + m);
+  const dt = (v) => (e.multi ? `;VALUE=DATE:${v}` : `;TZID=Asia/Jerusalem:${v}`);
+  return ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Grinplastch//Control//HE', 'BEGIN:VEVENT', `UID:${q.id}@grinplastch`, `DTSTAMP:${new Date().toISOString().replace(/[-:]/g, '').slice(0, 15)}Z`, `DTSTART${dt(e.start)}`, `DTEND${dt(e.end)}`, `SUMMARY:${esc2(e.title)}`, `LOCATION:${esc2(e.location)}`, `DESCRIPTION:${esc2(e.details)}`, 'END:VEVENT', 'END:VCALENDAR'].join('\r\n');
+}
+const durLabel = (d) => (DURS.find(([k]) => k === d) || [, ''])[1];
+const schedText = (sc) => `${fmtD(sc.date)}${sc.dur[0] === 'd' ? '' : ` · ${sc.time}`} · ${durLabel(sc.dur)}`;
+function schedForm(q) {
+  return `<div class="sched-f"><input type="date" id="sd-${q.id}" aria-label="תאריך" value="${esc(q.sched?.date || '')}"><input type="time" id="st-${q.id}" aria-label="שעת התחלה" value="${esc(q.sched?.time || '08:00')}"><select id="su-${q.id}" aria-label="משך">${DURS.map(([k, l]) => `<option value="${k}" ${(q.sched?.dur || 'h8') === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
+    <button type="button" class="btn pri" data-act="schedSave" data-id="${q.id}">${ic('plus')} שמירה ביומן</button>`;
+}
 const Q_ST = { draft: ['טיוטה', ''], sent: ['נשלחה', 'acc'], approved: ['אושרה', 'good'], rejected: ['נדחתה', 'bad'] };
 const J_ST = { planned: ['מתוכננת', ''], active: ['בביצוע', 'acc'], done: ['הסתיימה', 'good'], cancelled: ['בוטלה', 'bad'] };
 const D_ST = { open: ['פתוח', 'acc'], late: ['באיחור', 'bad'], paid: ['שולם', 'good'] };
@@ -774,6 +816,8 @@ function viewHome() {
     <button class="stat" data-tab="quotes"><span class="v num">${won + lost ? Math.round((won / (won + lost)) * 100) : 0}%</span><span class="l">אחוז סגירת הצעות</span></button>
     <button class="stat" data-tab="jobs"><span class="v">${active}</span><span class="l">עבודות בביצוע</span></button>
   </div>
+  ${(() => { const open = db.quotes.filter(needsSched).sort((a, b) => (b.status === 'approved') - (a.status === 'approved') || num(b.no) - num(a.no)); return open.length ? `<div class="section-title"><h2>מתי מבצעים?</h2><span class="muted small">${open.length} הצעות בלי מועד ביומן</span></div>
+  <div class="card cal-q">${open.map((q) => `<div class="sched"><div class="sched-h"><b>${esc(q.client)} · ${esc(q.location || '')}</b><span class="chip ${Q_ST[q.status][1]}">הצעה ${esc(q.no)} · ${Q_ST[q.status][0]}</span></div>${schedForm(q)}</div>`).join('')}</div>` : ''; })()}
   <div class="section-title"><h2>דורש טיפול</h2><span class="muted small">${actions.length ? `${actions.length} פריטים` : ''}</span></div>
   <div class="card">${actions.length ? `<div class="rows">${actions.join('')}</div>` : `<div class="empty"><b>אין משהו דחוף</b><span>חובות באיחור, הצעות שצריך לחזור עליהן ועבודות שלא חויבו יופיעו כאן.</span></div>`}</div>`;
 }
@@ -799,10 +843,10 @@ function viewQuotes() {
   const list = by[filter.quotes];
   return `<div class="section-title"><h2>הצעות מחיר</h2><span class="muted small">הבאה: <span class="num mono">${nextQuoteNo()}</span></span></div>
   <div class="strip">
-    <button type="button" class="voice-cta" data-act="pickPdf">${ic('doc')}<span class="grow"><b>ייבוא PDF</b><span class="muted small">בחירת מסמך מהטלפון</span></span></button>
+    <button type="button" class="voice-cta" data-act="pickPdf">${ic('doc')}<span class="grow"><b>ייבוא מסמך</b><span class="muted small">PDF, וורד, אקסל, תמונה</span></span></button>
     <button type="button" class="voice-cta" data-sheet="voice">${ic('mic')}<span class="grow"><b>הקלטה או הדבקה</b><span class="muted small">דיבור או טקסט מוכן</span></span></button>
   </div>
-  <input type="file" id="v-file" accept="application/pdf,.pdf,image/*" hidden>
+  <input type="file" id="v-file" hidden>
   ${filters('quotes', [['active', 'פתוחות', by.active.length], ['follow', 'לחזור ללקוח', by.follow.length], ['approved', 'אושרו', by.approved.length], ['all', 'הכל', all.length]])}
   <div class="card">${list.length ? `<div class="rows">${list.map(quoteRow).join('')}</div>` : `<div class="empty"><b>אין הצעות ברשימה הזו</b><span>הצעה חדשה נבנית מהמחירון ומפיקה טקסט מוכן לוואטסאפ.</span></div>`}</div>
   <button class="fab" data-sheet="quoteForm">${ic('plus')} הצעה חדשה</button>`;
@@ -1041,17 +1085,185 @@ async function pdfToText(file) {
   for (let i = 1; i <= doc.numPages; i++) out.push(...pdfLines((await (await doc.getPage(i)).getTextContent()).items));
   return out.join('\n');
 }
+/* ---------- read text from any document: PDF, Word, Excel, OpenOffice, RTF, text, HTML ---------- */
+async function inflateRaw(bytes) {
+  const ds = new DecompressionStream('deflate-raw');
+  const out = new Response(new Blob([bytes]).stream().pipeThrough(ds));
+  return new Uint8Array(await out.arrayBuffer());
+}
+async function unzip(buf) {
+  const u = new Uint8Array(buf), dv = new DataView(buf), files = {};
+  let e = u.length - 22;
+  while (e >= 0 && dv.getUint32(e, true) !== 0x06054b50) e--;
+  if (e < 0) throw new Error('zip');
+  let p = dv.getUint32(e + 16, true); const n = dv.getUint16(e + 10, true);
+  const dec = new TextDecoder();
+  for (let i = 0; i < n; i++) {
+    if (dv.getUint32(p, true) !== 0x02014b50) break;
+    const method = dv.getUint16(p + 10, true), csize = dv.getUint32(p + 20, true);
+    const nlen = dv.getUint16(p + 28, true), xlen = dv.getUint16(p + 30, true), clen = dv.getUint16(p + 32, true), off = dv.getUint32(p + 42, true);
+    const name = dec.decode(u.subarray(p + 46, p + 46 + nlen));
+    files[name] = { method, csize, off };
+    p += 46 + nlen + xlen + clen;
+  }
+  return {
+    names: Object.keys(files),
+    async text(name) {
+      const f = files[name]; if (!f) return null;
+      const start = f.off + 30 + dv.getUint16(f.off + 26, true) + dv.getUint16(f.off + 28, true);
+      const raw = u.subarray(start, start + f.csize);
+      return dec.decode(f.method === 8 ? await inflateRaw(raw) : raw);
+    },
+  };
+}
+const xmlDoc = (s) => new DOMParser().parseFromString(s, 'application/xml');
+const byTag = (root, tag) => [...root.getElementsByTagName(tag)];
+function docxText(xml) {
+  const lines = [];
+  byTag(xmlDoc(xml), 'w:p').forEach((p) => {
+    let s = '';
+    p.querySelectorAll('*').forEach((n) => { if (n.nodeName === 'w:t') s += n.textContent; else if (n.nodeName === 'w:tab') s += ' '; else if (n.nodeName === 'w:br') s += '\n'; });
+    s = s.trim(); if (!s) { lines.push(''); return; }
+    lines.push((byTag(p, 'w:numPr').length && !/^[-•*]/.test(s) ? '- ' : '') + s);
+  });
+  return lines.join('\n');
+}
+function odtText(xml) {
+  const lines = [];
+  const walk = (n, inList) => {
+    for (const c of n.childNodes) {
+      if (c.nodeName === 'text:p' || c.nodeName === 'text:h') { const s = c.textContent.trim(); lines.push(s ? (inList && !/^[-•*]/.test(s) ? '- ' : '') + s : ''); }
+      else if (c.nodeType === 1) walk(c, inList || c.nodeName === 'text:list');
+    }
+  };
+  walk(xmlDoc(xml).documentElement, false);
+  return lines.join('\n');
+}
+async function xlsxText(z) {
+  const ss = await z.text('xl/sharedStrings.xml');
+  const shared = ss ? byTag(xmlDoc(ss), 'si').map((si) => byTag(si, 't').map((t) => t.textContent).join('')) : [];
+  const lines = [];
+  for (const name of z.names.filter((n) => /^xl\/worksheets\/sheet\d+\.xml$/.test(n)).sort()) {
+    byTag(xmlDoc(await z.text(name)), 'row').forEach((r) => {
+      const cells = byTag(r, 'c').map((c) => { const t = c.getAttribute('t'), v = byTag(c, 'v')[0]; if (t === 's') return shared[Number(v && v.textContent)] || ''; if (t === 'inlineStr') return byTag(c, 't').map((x) => x.textContent).join(''); return v ? v.textContent : ''; }).filter((x) => String(x).trim());
+      lines.push(cells.join(' '));
+    });
+    lines.push('');
+  }
+  return lines.join('\n');
+}
+function rtfText(s) {
+  const cp = new TextDecoder('windows-1255');
+  let out = '', i = 0, skip = 0; const stack = [];
+  const dests = /^(fonttbl|colortbl|stylesheet|info|pict|object|header|footer|themedata|datastore|latentstyles|listtable|listoverridetable|rsidtbl|generator|xmlnstbl|mmathPr)$/;
+  while (i < s.length) {
+    const c = s[i];
+    if (c === '{') { stack.push(skip); i++; if (s.startsWith('\\*', i)) skip = 1; continue; }
+    if (c === '}') { skip = stack.pop() || 0; i++; continue; }
+    if (c === '\\') {
+      const m = s.slice(i).match(/^\\([a-zA-Z]+)(-?\d+)? ?|^\\'([0-9a-fA-F]{2})|^\\(.)/);
+      if (!m) { i++; continue; }
+      i += m[0].length;
+      if (m[3]) { if (!skip) out += cp.decode(new Uint8Array([parseInt(m[3], 16)])); continue; }
+      if (m[4]) { if (!skip && '\\{}'.includes(m[4])) out += m[4]; continue; }
+      const w = m[1], n = m[2];
+      if (dests.test(w)) { skip = 1; continue; }
+      if (skip) continue;
+      if (w === 'par' || w === 'line') out += '\n';
+      else if (w === 'tab') out += ' ';
+      else if (w === 'u' && n != null) { let k = Number(n); if (k < 0) k += 65536; out += String.fromCharCode(k); if (s[i] === '?') i++; else if (s.startsWith("\\'", i)) i += 4; }
+      continue;
+    }
+    if (!skip && c !== '\r' && c !== '\n') out += c;
+    i++;
+  }
+  return out;
+}
+function decodeText(buf) {
+  const u8 = new Uint8Array(buf);
+  if (u8[0] === 0xff && u8[1] === 0xfe) return new TextDecoder('utf-16le').decode(u8);
+  if (u8[0] === 0xfe && u8[1] === 0xff) return new TextDecoder('utf-16be').decode(u8);
+  const utf = new TextDecoder('utf-8').decode(u8);
+  return (utf.match(/\uFFFD/g) || []).length > 3 ? new TextDecoder('windows-1255').decode(u8) : utf;
+}
+function htmlText(s) {
+  const d = new DOMParser().parseFromString(s, 'text/html');
+  d.querySelectorAll('script,style').forEach((x) => x.remove());
+  d.querySelectorAll('br').forEach((x) => x.replaceWith('\n'));
+  d.querySelectorAll('p,div,li,tr,h1,h2,h3,h4,h5,h6').forEach((x) => { if (x.tagName === 'LI') x.prepend('- '); x.append('\n'); });
+  d.querySelectorAll('td,th').forEach((x) => x.append(' '));
+  return d.body ? d.body.textContent : '';
+}
+function oleText(buf) {
+  // old Word/Excel (97-2003): pull readable Hebrew/English runs out of the binary
+  const u8 = new Uint8Array(buf), runs = [];
+  const u16 = new TextDecoder('utf-16le').decode(u8.subarray(0, u8.length - (u8.length % 2)));
+  (u16.match(/[א-ת -~׳״\r\n\t₪]{6,}/g) || []).forEach((r) => { if (/[א-ת]/.test(r)) runs.push(r); });
+  if (!runs.length) (new TextDecoder('windows-1255').decode(u8).match(/[א-ת -~\r\n\t]{6,}/g) || []).forEach((r) => { if (/[א-ת]{2}/.test(r)) runs.push(r); });
+  return runs.join('\n').replace(/\r/g, '\n');
+}
+async function fileToText(file) {
+  const buf = await file.arrayBuffer(), u8 = new Uint8Array(buf);
+  const head = String.fromCharCode(...u8.subarray(0, 8)), name = (file.name || '').toLowerCase();
+  if (head.startsWith('%PDF-')) return { kind: 'PDF', text: await pdfToText(file) };
+  if (u8[0] === 0x50 && u8[1] === 0x4b) {
+    const z = await unzip(buf);
+    if (z.names.includes('word/document.xml')) return { kind: 'Word', text: docxText(await z.text('word/document.xml')) };
+    if (z.names.some((n) => n.startsWith('xl/'))) return { kind: 'Excel', text: await xlsxText(z) };
+    if (z.names.includes('content.xml')) return { kind: 'OpenOffice', text: odtText(await z.text('content.xml')) };
+    throw new Error('zip-unknown');
+  }
+  if (u8[0] === 0xd0 && u8[1] === 0xcf && u8[2] === 0x11 && u8[3] === 0xe0) return { kind: 'Word ישן', text: oleText(buf) };
+  const txt = decodeText(buf);
+  if (txt.trimStart().startsWith('{\\rtf')) return { kind: 'RTF', text: rtfText(txt) };
+  if (/\.(html?|htm)$/.test(name) || /^\s*<(!doctype|html)/i.test(txt)) return { kind: 'HTML', text: htmlText(txt) };
+  return { kind: 'טקסט', text: txt };
+}
+
+/* photos: text recognition inside the phone (Tesseract, Hebrew + English). Good on printed text, weak on handwriting. */
+const TESS = 'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';
+function loadScript(src) { return new Promise((ok, bad) => { const el = document.createElement('script'); el.src = src; el.onload = ok; el.onerror = () => bad(new Error('load')); document.head.append(el); }); }
+async function shrinkImage(file, max = 2000) {
+  try {
+    const bmp = await createImageBitmap(file); const k = Math.min(1, max / Math.max(bmp.width, bmp.height));
+    if (k >= 1) return file;
+    const cv = document.createElement('canvas'); cv.width = Math.round(bmp.width * k); cv.height = Math.round(bmp.height * k);
+    cv.getContext('2d').drawImage(bmp, 0, 0, cv.width, cv.height);
+    return await new Promise((ok) => cv.toBlob((b) => ok(b || file), 'image/jpeg', 0.92));
+  } catch { return file; }
+}
+async function imageToText(file) {
+  if (!window.Tesseract) await loadScript(TESS);
+  const img = await shrinkImage(file);
+  const worker = await Tesseract.createWorker(['heb', 'eng'], 1, {
+    logger: (m) => { if (m.status === 'recognizing text') toast(`מזהה טקסט בתמונה… ${Math.round((m.progress || 0) * 100)}%`, 30000); else if (/load|initializ/.test(m.status || '')) toast('טוען את רכיב הזיהוי, בפעם הראשונה זה לוקח זמן…', 30000); },
+  });
+  try { const { data } = await worker.recognize(img); return data.text || ''; } finally { worker.terminate(); }
+}
 async function importFile(file) {
   if (!file) return;
-  if (/^image\//.test(file.type)) { toast('צילום עוד לא נקרא כאן. שלח אותו ל־Claude והדבק את ההצעה שחוזרת'); return; }
-  let head = '';
-  try { head = new TextDecoder().decode(new Uint8Array(await file.slice(0, 5).arrayBuffer())); } catch {}
-  if (head !== '%PDF-' && file.type !== 'application/pdf' && !/\.pdf$/i.test(file.name || '')) { toast('הקובץ שנבחר אינו PDF'); return; }
-  toast('קורא את ה־PDF…');
-  let text = '', stage = 'טעינת רכיב הקריאה';
-  try { await loadPdfjs(); stage = 'קריאת הקובץ'; text = await pdfToText(file); }
-  catch (e) { toast(`לא הצלחתי, בשלב ${stage}. ${navigator.onLine ? '' : 'אין חיבור לאינטרנט. '}(${String(e && (e.message || e.name) || e).slice(0, 60)})`, 9000); return; }
-  if (text.replace(/\s/g, '').length < 20) { toast('ב־PDF הזה אין טקסט, הוא סרוק כתמונה. שלח אותו ל־Claude'); return; }
+  if (/^image\//.test(file.type) || /\.(jpe?g|png|gif|heic|heif|webp|bmp)$/i.test(file.name || '')) {
+    let text = '';
+    try { text = await imageToText(file); }
+    catch (e) { toast(`לא הצלחתי לקרוא את התמונה. ${navigator.onLine ? 'אם זה צילום HEIC, צלם שוב בפורמט JPG.' : 'צריך חיבור לאינטרנט.'}`, 9000); return; }
+    text = text.replace(/[|]/g, '').replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n');
+    if (text.replace(/\s/g, '').length < 20) { toast('לא זוהה טקסט בתמונה. כתב יד שולחים ל־Claude', 7000); return; }
+    const ta = $app.querySelector('#v-text'); if (ta) ta.value = text;
+    voiceText = '';
+    if (looksLikeQuote(text)) applyQuoteText(text); else applyVoice(text);
+    toast('נקרא מתמונה. בדוק כל שדה בסיכום, זיהוי מתמונה לא מושלם', 7000);
+    return;
+  }
+  toast('קורא את המסמך…', 20000);
+  let r;
+  try { r = await fileToText(file); }
+  catch (e) {
+    const msg = String(e && (e.message || e.name) || e);
+    toast(msg === 'zip-unknown' ? 'סוג הקובץ הזה לא נתמך. נתמכים PDF, וורד, אקסל, OpenOffice, RTF וטקסט' : `לא הצלחתי לקרוא את הקובץ. ${navigator.onLine ? '' : 'אין חיבור לאינטרנט. '}(${msg.slice(0, 60)})`, 9000);
+    return;
+  }
+  const text = String(r.text || '').replace(/ /g, ' ').replace(/\n{3,}/g, '\n\n');
+  if (text.replace(/\s/g, '').length < 20) { toast(r.kind === 'PDF' ? 'ב־PDF הזה אין טקסט, הוא סרוק כתמונה. שלח אותו ל־Claude' : 'לא מצאתי טקסט בקובץ', 6000); return; }
   const ta = $app.querySelector('#v-text'); if (ta) ta.value = text;
   voiceText = '';
   if (looksLikeQuote(text)) applyQuoteText(text); else applyVoice(text);
@@ -1162,6 +1374,7 @@ const SHEETS = {
         <div class="kv"><span>מיקום</span><b>${esc(q.location || '')}</b></div><div class="kv"><span>תאריך</span><b class="num">${fmtD(q.date)}</b></div><div class="kv"><span>בתוקף עד</span><b class="num">${fmtD(qValid(q))}</b></div>
         ${q.docUrl ? `<div class="kv"><span>מסמך</span><b><a href="${esc(q.docUrl)}" target="_blank" rel="noopener">פתיחת המסמך</a></b></div>` : ''}</div></div>
       <button class="btn pri" data-sheet="pdf" data-id="${q.id}">${ic('doc')} PDF עם הלוגו לשליחה</button>
+      <div class="card stack ${q.sched ? '' : 'cal-q'}"><span class="eyebrow">ביצוע ביומן</span>${q.sched ? `<b>${esc(schedText(q.sched))}</b><div class="btns full"><a class="btn" href="${esc(calUrl(q))}" target="_blank" rel="noopener">פתיחה ביומן גוגל</a><button class="btn" data-act="schedIcs" data-id="${q.id}">קובץ ליומן</button></div><button class="linkbtn" data-act="schedClear" data-id="${q.id}">שינוי מועד</button>` : `<span class="muted small">מתי מבצעים? אחרי השמירה האירוע נפתח ביומן גוגל, מוכן לשמירה.</span>${schedForm(q)}`}</div>
       <div class="card stack"><h3>מצב ההצעה</h3><div class="btns">${Object.entries(Q_ST).map(([k, [l]]) => `<button class="btn sm ${q.status === k ? 'pri' : ''}" data-act="qStatus" data-id="${q.id}" data-v="${k}">${l}</button>`).join('')}</div>
         ${q.status === 'approved' ? (job ? `<button class="btn" data-open="job" data-id="${job.id}">מעבר לעבודה ${esc(job.no)}</button>` : `<button class="btn good" data-act="toJob" data-id="${q.id}">פתיחת עבודה מההצעה</button>`) : ''}</div>
       <div class="card stack"><h3>טקסט לוואטסאפ ולמייל</h3><pre class="out" id="qtext">${esc(quoteText(q))}</pre>
@@ -1179,14 +1392,14 @@ const SHEETS = {
   },
   voice() {
     const kws = [['לקוח', 'שם הלקוח. אם מתחילים בשם, גם בלי המילה'], ['טלפון', 'המספר, גם בהפסקות'], ['מיקום', 'או כתובת'], ['אזור', 'פותח אזור או סוג עבודה'], ['שורה', 'כל שורה בתיאור העבודה. גם תיאור'], ['חומרים', 'ואחריו עלינו, על הלקוח או לא רלוונטי'], ['גופי תאורה', 'אותו דבר'], ['אביזרים', 'אותו דבר. או אספקה הכל עלינו'], ['מחיר', 'הסכום לפני מע"מ. גם 9 אלף'], ['הערה', 'הערה נוספת להצעה']];
-    return sheetFrame('הקלטה, הדבקה או PDF', `
+    return sheetFrame('הקלטה, הדבקה או מסמך', `
       <div class="card stack"><div class="wiz-q">מדברים ברצף, או מדביקים הצעה מוכנה</div>
         <div class="rec-wrap"><button type="button" id="v-rec" class="rec" data-act="recToggle" aria-pressed="false">${ic('mic')}<span class="l">התחלת הקלטה</span></button><span id="v-state" class="muted small" aria-live="polite"></span></div>
         <div class="field"><label for="v-text">מה נקלט</label><textarea id="v-text" rows="7" placeholder="הדיבור יופיע כאן. אפשר גם להקליד, לתקן או להדביק">${esc(voiceText)}</textarea><span class="hint">אפשר לתקן כאן מילים שנקלטו לא נכון לפני השיבוץ</span></div>
-        <div class="btns full"><button type="button" class="btn" data-act="pasteText">${ic('copy')} הדבקה</button><button type="button" class="btn" data-act="pickPdf">${ic('doc')} בחירת PDF</button></div>
-        <input type="file" id="v-file" accept="application/pdf,.pdf,image/*" hidden>
+        <div class="btns full"><button type="button" class="btn" data-act="pasteText">${ic('copy')} הדבקה</button><button type="button" class="btn" data-act="pickPdf">${ic('doc')} בחירת מסמך</button></div>
+        <input type="file" id="v-file" hidden>
         <button type="button" class="btn pri" data-act="voiceApply">שיבוץ בהצעה</button></div>
-      <div class="card stack"><h3>PDF שכבר יש לך</h3><span class="muted">"בחירת PDF" קורא את הקובץ בטלפון עצמו וממלא את ההצעה. עובד עם PDF שיש בו טקסט, כמו הצעה שיצאה מגוגל דוקס. PDF סרוק או צילום של דף שולחים ל־Claude.</span></div>
+      <div class="card stack"><h3>מסמך שכבר יש לך</h3><span class="muted">"בחירת מסמך" קורא את הקובץ בטלפון עצמו וממלא את ההצעה: PDF, וורד (גם ישן), אקסל, OpenOffice, RTF, טקסט, HTML ותמונה. בתמונה הזיהוי טוב בטקסט מודפס וחלש בכתב יד. לכתב יד, הכי מדויק לשלוח ל־Claude.</span></div>
       <div class="card stack"><h3>מכתב יד, צילום או PDF</h3><ol style="margin:0;padding-inline-start:20px;display:flex;flex-direction:column;gap:6px">
         <li>שולחים את הצילום או הקובץ ל־Claude וכותבים "הצעת מחיר".</li>
         <li>מעתיקים את נוסח ההצעה ש־Claude מחזיר, הנוסח לוואטסאפ.</li>
@@ -1382,7 +1595,7 @@ function render() {
   const body = { home: viewHome, debts: viewDebts, quotes: viewQuotes, prices: viewPrices, jobs: viewJobs, more: viewMore }[tab]();
   const navs = [['home', 'בית', 'home', 0], ['debts', 'גבייה', 'coin', late], ['quotes', 'הצעות', 'doc', follow], ['prices', 'מחירון', 'tag', 0], ['jobs', 'עבודות', 'tool', 0], ['more', 'לקוחות', 'users', 0]];
   const y = scrollY;
-  $app.innerHTML = `<header class="topbar"><div class="wrap"><div class="brand">${MARK}<div style="min-width:0"><h1>מרכז שליטה</h1><span class="sub">${demoMode ? 'הדגמה · ' : ''}${COMPANY}</span></div></div><button class="icon-btn" data-act="lock" aria-label="נעילה">${ic('lock')}</button></div></header>
+  $app.innerHTML = `<header class="topbar"><div class="wrap"><div class="brand">${MARK}<div style="min-width:0"><h1>מרכז שליטה</h1><span class="sub">${demoMode ? 'הדגמה · ' : ''}${COMPANY}</span></div></div><button class="icon-btn" data-act="lock" aria-label="נעילה">${ic('lock')}</button></div><div class="pager" aria-hidden="true">${TABS.map((k) => `<i class="${k === tab ? 'on' : ''}"></i>`).join('')}</div></header>
   <main class="wrap stack">${body}</main>
   <nav class="nav" aria-label="ניווט"><div class="nav-in">${navs.map(([k, l, i, b]) => `<button data-tab="${k}" ${tab === k ? 'aria-current="page"' : ''}>${ic(i)}<span>${l}</span>${b ? `<span class="badge num">${b}</span>` : ''}</button>`).join('')}</div></nav>
   ${sheet ? SHEETS[sheet.name](sheet.id) : ''}`;
@@ -1470,6 +1683,26 @@ $app.addEventListener('click', async (e) => {
     }
     case 'recToggle': if (recOn) stopRec(); else startRec(); break;
     case 'voiceApply': { stopRec(); const text = ($app.querySelector('#v-text')?.value || '').trim(); if (!text) { toast('אין עדיין טקסט. הקלט, הקלד או הדבק'); break; } voiceText = ''; if (looksLikeQuote(text)) applyQuoteText(text); else applyVoice(text); break; }
+    case 'schedSave': {
+      const q = Q(); if (!q) break;
+      const date = $app.querySelector(`#sd-${id}`)?.value, time = $app.querySelector(`#st-${id}`)?.value || '08:00', dur = $app.querySelector(`#su-${id}`)?.value || 'h8';
+      if (!date) { toast('צריך לבחור תאריך'); $app.querySelector(`#sd-${id}`)?.focus(); break; }
+      q.sched = { date, time, dur };
+      if (q.status === 'approved') { let j = db.jobs.find((x) => x.quoteId === q.id); if (!j) { j = { id: uid(), no: nextJobNo(), quoteId: q.id, client: q.client, location: q.location, status: 'planned', start: date, end: '', amount: qSub(q), billed: false, notes: '' }; db.jobs.push(j); } else j.start = date; }
+      save();
+      const url = calUrl(q);
+      const l = document.createElement('a'); l.href = url; l.target = '_blank'; l.rel = 'noopener'; document.body.append(l); l.click(); l.remove();
+      toast('נשמר. ביומן לחץ "שמירה" כדי לאשר', 5000);
+      if (sheet) rerenderSheet(); else render();
+      break;
+    }
+    case 'schedClear': { const q = Q(); if (q) { delete q.sched; save(); rerenderSheet(); } break; }
+    case 'schedIcs': {
+      const q = Q(); if (!q?.sched) break;
+      const url = URL.createObjectURL(new Blob([calIcs(q)], { type: 'text/calendar' })), l = document.createElement('a');
+      l.href = url; l.download = `עבודה ${q.no}.ics`; document.body.append(l); l.click(); l.remove(); setTimeout(() => URL.revokeObjectURL(url), 10000);
+      toast('הקובץ נשמר. פתח אותו כדי להוסיף ליומן'); break;
+    }
     case 'pickPdf': $app.querySelector('#v-file')?.click(); break;
     case 'pasteText': { try { const tx = await navigator.clipboard.readText(); if (!tx) { toast('הלוח ריק'); break; } const ta = $app.querySelector('#v-text'); ta.value = tx; voiceText = tx; toast('הודבק. עכשיו שיבוץ בהצעה'); } catch { toast('לחיצה ארוכה בתיבה ואז הדבק'); $app.querySelector('#v-text')?.focus(); } break; }
     case 'wizPrev': syncDraft(); wizShow(wiz - 1); break;
@@ -1622,6 +1855,49 @@ $app.addEventListener('submit', async (e) => {
     case 'settingsForm': Object.assign(S(), { vat: num(v.vat), validity: num(v.validity), terms: num(v.terms), follow: num(v.follow), lastQuote: num(v.lastQuote) }); afterSave('ההגדרות נשמרו'); break;
   }
 });
+
+/* ---------- swipe between pages, like the Android home screen ----------
+   finger to the right = next page (the one to the left in the bottom bar), finger to the left = previous */
+const TABS = ['home', 'debts', 'quotes', 'prices', 'jobs', 'more'];
+const reduceMotion = () => { try { return matchMedia('(prefers-reduced-motion: reduce)').matches; } catch { return false; } };
+let sw = null;
+function goTab(dir, fromX = 0) {
+  const i = TABS.indexOf(tab) + dir;
+  const main = $app.querySelector('main');
+  if (i < 0 || i >= TABS.length) { if (main) { main.style.transition = 'transform .2s ease-out'; main.style.transform = ''; } return; }
+  const w = innerWidth, out = dir > 0 ? w : -w;
+  const swap = () => {
+    tab = TABS[i]; render(); scrollTo(0, 0);
+    const m = $app.querySelector('main'); if (!m || reduceMotion()) return;
+    m.style.transition = 'none'; m.style.transform = `translateX(${-out * 0.35}px)`; m.style.opacity = '0.4';
+    requestAnimationFrame(() => requestAnimationFrame(() => { m.style.transition = 'transform .22s ease-out, opacity .22s ease-out'; m.style.transform = ''; m.style.opacity = ''; }));
+  };
+  if (!main || reduceMotion()) return swap();
+  main.style.transition = 'transform .16s ease-in, opacity .16s ease-in'; main.style.transform = `translateX(${out}px)`; main.style.opacity = '0';
+  setTimeout(swap, 150);
+}
+const noSwipe = (el) => !!el.closest('input, textarea, select, .filters, .pattern, .sheet, .scrim, .nav');
+addEventListener('touchstart', (e) => {
+  if (!db || sheet || e.touches.length !== 1 || noSwipe(e.target)) { sw = null; return; }
+  const t = e.touches[0]; sw = { x: t.clientX, y: t.clientY, t: Date.now(), dir: 0 };
+}, { passive: true });
+addEventListener('touchmove', (e) => {
+  if (!sw) return;
+  const t = e.touches[0], dx = t.clientX - sw.x, dy = t.clientY - sw.y;
+  if (!sw.dir) { if (Math.abs(dx) > 12 && Math.abs(dx) > Math.abs(dy) * 1.4) sw.dir = 1; else if (Math.abs(dy) > 12) { sw = null; return; } else return; }
+  e.preventDefault();
+  const main = $app.querySelector('main'); if (!main) return;
+  const i = TABS.indexOf(tab) + (dx > 0 ? 1 : -1), edge = i < 0 || i >= TABS.length;
+  main.style.transition = 'none'; main.style.transform = `translateX(${edge ? dx * 0.2 : dx * 0.85}px)`;
+  sw.dx = dx;
+}, { passive: false });
+addEventListener('touchend', () => {
+  if (!sw || !sw.dir) { sw = null; return; }
+  const dx = sw.dx || 0, fast = Math.abs(dx) / Math.max(1, Date.now() - sw.t) > 0.45; sw = null;
+  if (Math.abs(dx) > innerWidth * 0.25 || (fast && Math.abs(dx) > 40)) goTab(dx > 0 ? 1 : -1, dx);
+  else { const main = $app.querySelector('main'); if (main) { main.style.transition = 'transform .2s ease-out'; main.style.transform = ''; } }
+}, { passive: true });
+addEventListener('touchcancel', () => { if (sw) { const m = $app.querySelector('main'); if (m) { m.style.transition = 'transform .2s'; m.style.transform = ''; } } sw = null; }, { passive: true });
 
 /* ---------- auto lock ---------- */
 let idle, hiddenAt = 0;
