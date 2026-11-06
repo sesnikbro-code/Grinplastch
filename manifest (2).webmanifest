@@ -1,0 +1,22 @@
+{
+  "name": "גרינפלסטש - הצעות מחיר",
+  "short_name": "גרינפלסטש",
+  "lang": "he", "dir": "rtl",
+  "start_url": "./", "scope": "./", "display": "standalone",
+  "background_color": "#0a1730", "theme_color": "#0a1730",
+  "icons": [
+    {"src": "icon-192.png", "sizes": "192x192", "type": "image/png"},
+    {"src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable"}
+  ],
+  "share_target": {
+    "action": "./share",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url",
+      "files": [{ "name": "vcf", "accept": ["text/vcard", "text/x-vcard", "text/directory", "text/plain", ".vcf"] }]
+    }
+  }
+}
