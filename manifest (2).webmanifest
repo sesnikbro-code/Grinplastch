@@ -16,7 +16,10 @@
       "title": "title",
       "text": "text",
       "url": "url",
-      "files": [{ "name": "vcf", "accept": ["text/vcard", "text/x-vcard", "text/directory", "text/plain", ".vcf"] }]
+      "files": [
+        { "name": "vcf", "accept": ["text/vcard", "text/x-vcard", "text/directory", "text/plain", ".vcf"] },
+        { "name": "doc", "accept": ["application/pdf", ".pdf", "image/jpeg", "image/png", "image/webp"] }
+      ]
     }
   }
 }
